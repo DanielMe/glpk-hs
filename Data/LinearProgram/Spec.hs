@@ -114,6 +114,7 @@ readBds cst expr = do
 			char '=' >> return EQ,
 			char '>' >> optional (char '=') >> return GT]
 
+{-# SPECIALIZE mapVars :: Ord v' => (v -> v') -> LP v Double -> LP v' Double #-}
 -- | Applies the specified function to the variables in the linear program.
 -- If multiple variables in the original program are mapped to the same variable in the new program,
 -- in general, we set those variables to all be equal, as follows.

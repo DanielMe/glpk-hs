@@ -1,7 +1,8 @@
 {-# LANGUAGE UndecidableInstances, FlexibleInstances, GeneralizedNewtypeDeriving, FunctionalDependencies, MultiParamTypeClasses #-}
 module Data.LinearProgram.LPMonad.VarSource (
-	-- * Types for automatically generating distinct variables
-	VarSource, VarSourceT, Var, MonadSource(..), evalVarSource, evalVarSourceT) where
+	-- * Variable generation monad
+	VarSource, evalVarSource, VarSourceT, evalVarSourceT, Var(..),
+	MonadSource(..)) where
 
 import Control.Monad
 import Control.Monad.State.Strict
@@ -36,6 +37,7 @@ instance Show Var where
 
 instance Read Var where
 	readsPrec _ ('x':'_':xs) = [(Var x, s') | (x, s') <- readsPrec 0 xs]
+	readsPrec _ _ = []
 
 instance MonadState s m => MonadState s (VarSourceT m) where
 	put x = VarSourceT (lift (put x))
