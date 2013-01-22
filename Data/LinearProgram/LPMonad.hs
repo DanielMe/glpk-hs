@@ -14,13 +14,16 @@ module Data.LinearProgram.LPMonad (
 	glpSolve,
 	quickSolveMIP',
 	quickSolveLP',
-	glpSolve') where
+	glpSolve',
+	-- * File I/O
+	writeLPToFile,
+	readLPFromFile) where
 
 import Control.Monad.State.Strict
-import Control.Monad.Identity
+-- import Control.Monad.Identity
 
 import Data.Map
-import Data.Monoid
+-- import Data.Monoid
 
 import Data.LinearProgram.Common
 import Data.LinearProgram.LPMonad.Internal
