@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts, RecordWildCards #-}
 
-module Data.LinearProgram.LPMonad.Internal (
+module Control.Monad.LPMonad.Internal (
 -- 	module Data.LinearProgram.Common,
 	-- * Monad definitions
 	LPM,

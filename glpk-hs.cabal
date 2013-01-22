@@ -1,7 +1,7 @@
 Name:           glpk-hs
-Version:        0.2.3
+Version:        0.2.4
 Author:         Louis Wasserman
-License:        GPL
+License:        BSD3
 License-file:   LICENSE
 Maintainer:     Louis Wasserman <wasserman.louis@gmail.com>
 Stability:      experimental
@@ -17,7 +17,7 @@ Description:
     of options available.
 
 Category:      Math
-
+cabal-version: >= 1.4
 cabal-version:  >= 1.2
 build-type:     Simple
 
@@ -29,14 +29,15 @@ Exposed-modules:  Data.LinearProgram,
                   Data.LinearProgram.GLPK,
                   Data.LinearProgram.GLPK.Solver,
                   Data.LinearProgram.GLPK.IO,
-                  Data.LinearProgram.LPMonad,
-                  Data.Algebra
+                  Data.Algebra,
+                  Control.Monad.LPMonad,
+                  Control.Monad.LPMonad.Supply,
+                  Control.Monad.LPMonad.Supply.Class
 Other-modules:    Data.LinearProgram.GLPK.Internal,	
                   Data.LinearProgram.GLPK.Types,
                   Data.LinearProgram.GLPK.Common,
                   Data.LinearProgram.GLPK.IO.Internal,
-                  Data.LinearProgram.LPMonad.Internal,
-                  Data.LinearProgram.LPMonad.VarSource
+                  Control.Monad.LPMonad.Internal,
                   Data.LinearProgram.Spec,
                   Data.LinearProgram.Types,
                   Data.Algebra.Group,

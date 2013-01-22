@@ -7,10 +7,12 @@
 -- 
 -- Many of these functions should be executed in either the @'LPM' v c@ or the @'LPT' v c 'IO'@ monad.
 -- If you wish to generate new variables on an ad-hoc basis, rather than supplying your own variable type, use the
--- 'VarSource' or 'VarSourceT' monads in your transformer stack.
-module Data.LinearProgram.LPMonad (
-	module Data.LinearProgram.LPMonad.Internal,
-	module Data.LinearProgram.LPMonad.VarSource,
+-- 'VSupply' or 'VSupplyT' monads in your transformer stack, as in @'LPT' 'Var' c 'VSupply'@ or
+-- @'LPT' 'Var' c ('VSupplyT' 'IO')@.  To generate new variables, use 'supplyNew' or 'supplyN'.
+module Control.Monad.LPMonad (
+	module Control.Monad.LPMonad.Internal,
+	-- * Generation of new variables
+	module Control.Monad.LPMonad.Supply,
 	-- * Solvers
 	quickSolveMIP,
 	quickSolveLP,
@@ -30,8 +32,8 @@ import Control.Monad.Trans (MonadIO (..))
 import Data.Map (Map)
 
 import Data.LinearProgram.Common
-import Data.LinearProgram.LPMonad.Internal
-import Data.LinearProgram.LPMonad.VarSource
+import Control.Monad.LPMonad.Internal
+import Control.Monad.LPMonad.Supply
 
 import Data.LinearProgram.GLPK.Solver
 import Data.LinearProgram.GLPK.IO
