@@ -8,6 +8,7 @@
 -- Many of these functions should be executed in either the @'LPM' v c@ or the @'LPT' v c 'IO'@ monad.
 module Data.LinearProgram.LPMonad (
 	module Data.LinearProgram.LPMonad.Internal,
+	module Data.LinearProgram.LPMonad.VarSource,
 	-- * Solvers
 	quickSolveMIP,
 	quickSolveLP,
@@ -28,6 +29,7 @@ import Data.Map (Map)
 
 import Data.LinearProgram.Common
 import Data.LinearProgram.LPMonad.Internal
+import Data.LinearProgram.LPMonad.VarSource
 
 import Data.LinearProgram.GLPK.Solver
 import Data.LinearProgram.GLPK.IO
