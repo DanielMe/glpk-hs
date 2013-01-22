@@ -12,8 +12,20 @@ void c_glp_set_obj_name(glp_prob *lp, const char *name){
   	glp_set_obj_name(lp, name);
 }
 
-void c_glp_set_obj_dir(glp_prob *lp, int dir){
-  	glp_set_obj_dir(lp, dir ? GLP_MAX : GLP_MIN);
+void c_glp_maximize(glp_prob *lp){
+  	glp_set_obj_dir(lp, GLP_MAX);
+}
+
+void c_glp_minimize(glp_prob *lp){
+  	glp_set_obj_dir(lp, GLP_MIN);
+}
+
+// void c_glp_set_obj_dir(glp_prob *lp, int dir){
+//   	glp_set_obj_dir(lp, dir);
+// }
+
+int c_glp_get_bad_ray(glp_prob *lp){
+  	return glp_get_unbnd_ray(lp);
 }
 
 int c_glp_add_rows(glp_prob *lp, int nrows){

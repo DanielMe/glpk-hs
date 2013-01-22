@@ -29,7 +29,22 @@ instance Ord a => Monoid (Bounds a) where
 	bd `mappend` Free = bd
 	Equ a `mappend` Equ b
 		| a == b	= Equ a
-		| otherwise	= infeasible
+	Equ a `mappend` UBound b
+		| a <= b	= Equ a
+	Equ a `mappend` LBound b
+		| a >= b	= Equ a
+	Equ a `mappend` Bound l u
+		| a >= l && a <= u
+				= Equ a
+	Equ _ `mappend` _ = infeasible
+	UBound b `mappend` Equ a
+		| a <= b	= Equ a
+	LBound b `mappend` Equ a
+		| a >= b	= Equ a
+	Bound l u `mappend` Equ a
+		| a >= l && a <= u
+				= Equ a
+	_ `mappend` Equ _ = infeasible
 	LBound a `mappend` LBound b = LBound (max a b)
 	LBound l `mappend` UBound u = bound l u
 	UBound u `mappend` LBound l = bound l u

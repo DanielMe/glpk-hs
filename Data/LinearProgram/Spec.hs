@@ -11,16 +11,23 @@ import Data.Map hiding (map)
 
 import Text.ParserCombinators.ReadP
 
-import Data.LinearProgram.LinFunc
+import Data.Algebra
 import Data.LinearProgram.Types
 
+-- | Representation of a linear constraint on the variables, possibly labeled.
+-- The function may be bounded both above and below.
 data Constraint v c = Constr (Maybe String)
 			(LinFunc v c)
 			(Bounds c) deriving (Functor)
+-- | A mapping from variables to their types.  Variables not mentioned are assumed to be continuous,
 type VarTypes v = Map v VarKind
+-- | An objective function for a linear program.
 type ObjectiveFunc = LinFunc
+-- | A mapping from variables to their boundaries.  Variables not mentioned are assumed to be free.
 type VarBounds v c = Map v (Bounds c)
 
+-- | The specification of a linear programming problem with variables in @v@ and coefficients/constants in @c@.
+--   Note: the 'Read' and 'Show' implementations do not correspond to any particular linear program specification format.
 data LP v c = LP {direction :: Direction, objective :: ObjectiveFunc v c, constraints :: [Constraint v c],
 			varBounds :: VarBounds v c, varTypes :: VarTypes v} deriving (Read, Show, Functor)
 
@@ -110,14 +117,17 @@ readBds cst expr = do
 -- | Applies the specified function to the variables in the linear program.
 -- If multiple variables in the original program are mapped to the same variable in the new program,
 -- in general, we set those variables to all be equal, as follows.
+-- 
 -- * In linear functions, including the objective function and the constraints,
 -- 	coefficients will be added together.  For instance, if @v1,v2@ are mapped to the same
 -- 	variable @v'@, then a linear function of the form @c1 *& v1 ^+^ c2 *& v2@ will be mapped to
 -- 	@(c1 ^+^ c2) *& v'@.
+--
 -- * In variable bounds, bounds will be combined.  An error will be thrown if the bounds
 -- 	are mutually contradictory.
+-- 
 -- * In variable kinds, the most restrictive kind will be retained.
-mapVars :: (Ord v', Ord c, Module r c) => (v -> v') -> LP v c -> LP v' c
+mapVars :: (Ord v', Ord c, Group c) => (v -> v') -> LP v c -> LP v' c
 mapVars f LP{..} =  
 	LP{objective = mapKeysWith (^+^) f objective, 
 		constraints = [Constr lab (mapKeysWith (^+^) f func) bd | Constr lab func bd <- constraints],
@@ -126,7 +136,7 @@ mapVars f LP{..} =
 
 -- | Applies the specified function to the constants in the linear program.  This is only safe
 -- for a monotonic function.
-mapVals :: (Ord c', Module r c') => (c -> c') -> LP v c -> LP v c'
+mapVals :: (c -> c') -> LP v c -> LP v c'
 mapVals = fmap
 
 -- instance (NFData v, NFData c) => NFData (Constraint v c) where

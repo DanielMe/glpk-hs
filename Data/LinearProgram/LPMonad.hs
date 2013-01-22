@@ -77,14 +77,16 @@ writeLPToFile file = get >>= liftIO . writeLP file
 {-# SPECIALIZE readLPFromFile :: (Ord v, Read v, Ord c, Fractional c, Module r c) => FilePath -> LPT v c IO () #-}
 -- | Reads a linear program from the specified file in CPLEX LP format, overwriting
 -- the current linear program.  Uses 'read' and 'realToFrac' to translate to the specified type.
+-- Warning: this may not work on all files written using 'writeLPToFile', since variable names
+-- may be changed.
 -- (This is a binding to GLPK, not a Haskell implementation of CPLEX.)
-readLPFromFile :: (Ord v, Read v, Ord c, Fractional c, Module r c, MonadState (LP v c) m, MonadIO m) =>
+readLPFromFile :: (Ord v, Read v, Ord c, Fractional c, Group c, MonadState (LP v c) m, MonadIO m) =>
 	FilePath -> m ()
-readLPFromFile = put . mapVars read . mapVals realToFrac <=< liftIO . execLPT . readLPFromFile'
+readLPFromFile = put <=< liftIO . readLP
 
 {-# SPECIALIZE readLPFromFile :: FilePath -> LPT String Double IO () #-}
 -- | Reads a linear program from the specified file in CPLEX LP format, overwriting
 -- the current linear program.  (This is a binding to GLPK, not a Haskell implementation of CPLEX.)
 readLPFromFile' :: (MonadState (LP String Double) m, MonadIO m) =>
 	FilePath -> m ()
-readLPFromFile' file = put =<< liftIO (readLP file)
+readLPFromFile' = put <=< liftIO . readLP'
