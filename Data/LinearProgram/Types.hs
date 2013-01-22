@@ -1,4 +1,5 @@
-module Data.LinearProgram.Types where
+{-# LANGUAGE DeriveFunctor #-}
+module Data.LinearProgram.Types (VarKind(..), Direction(..), Bounds(..)) where
 
 -- import Control.DeepSeq
 
@@ -17,7 +18,7 @@ data Direction = Min | Max deriving (Eq, Ord, Enum, Show, Read)
 -- instance NFData Direction
 
 data Bounds a =
-	Free | LBound a | UBound a | Equ a | Bound a a deriving (Eq, Show, Read)
+	Free | LBound a | UBound a | Equ a | Bound a a deriving (Eq, Show, Read, Functor)
 
 -- instance NFData (Bounds a)
 
@@ -26,14 +27,22 @@ instance Ord a => Monoid (Bounds a) where
 	mempty = Free
 	Free `mappend` bd = bd
 	bd `mappend` Free = bd
-	Equ a `mappend` _ = Equ a
-	_ `mappend` Equ a = Equ a
+	Equ a `mappend` Equ b
+		| a == b	= Equ a
+		| otherwise	= infeasible
 	LBound a `mappend` LBound b = LBound (max a b)
-	LBound l `mappend` UBound u = Bound l u
-	UBound u `mappend` LBound l = Bound l u
-	LBound a `mappend` Bound l u = Bound (max a l) u
-	Bound l u `mappend` LBound a = Bound (max a l) u
+	LBound l `mappend` UBound u = bound l u
+	UBound u `mappend` LBound l = bound l u
+	LBound a `mappend` Bound l u = bound (max a l) u
+	Bound l u `mappend` LBound a = bound (max a l) u
 	UBound a `mappend` UBound b = UBound (min a b)
-	UBound a `mappend` Bound l u = Bound l (min a u)
-	Bound l u `mappend` UBound a = Bound l (min a u)
-	Bound l u `mappend` Bound l' u' = Bound (max l l') (min u u')
+	UBound a `mappend` Bound l u = bound l (min a u)
+	Bound l u `mappend` UBound a = bound l (min a u)
+	Bound l u `mappend` Bound l' u' = bound (max l l') (min u u')
+
+infeasible :: Bounds a
+infeasible = error "Mutually contradictory constraints found."
+
+bound :: Ord a => a -> a -> Bounds a
+bound l u	| l <= u	= Bound l u
+		| otherwise	= infeasible

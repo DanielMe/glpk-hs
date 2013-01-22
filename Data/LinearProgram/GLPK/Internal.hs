@@ -1,8 +1,10 @@
-{-# LANGUAGE RecordWildCards, ScopedTypeVariables, EmptyDataDecls, ForeignFunctionInterface #-}
-module Data.LinearProgram.GLPK.Internal (writeProblem, addCols,
+{-# LANGUAGE RecordWildCards, ScopedTypeVariables, ForeignFunctionInterface #-}
+module Data.LinearProgram.GLPK.Internal (writeProblem, solveSimplex, mipSolve,
+	getObjVal, getRowPrim, getColPrim, mipObjVal, mipRowVal, mipColVal) where
+{-(writeProblem, addCols,
 	addRows, createIndex, findCol, findRow, getColPrim, getRowPrim, getObjVal,
 	mipColVal, mipRowVal, mipObjVal, mipSolve, setColBounds, setColKind, setColName, setMatRow,
-	setObjCoef, setObjectiveDirection, setRowBounds, setRowName, solveSimplex) where
+	setObjCoef, setObjectiveDirection, setRowBounds, setRowName, solveSimplex) where-}
 
 import Control.Monad
 
@@ -20,15 +22,13 @@ import Data.LinearProgram.GLPK.Types
 foreign import ccall unsafe "c_glp_set_obj_dir" glpSetObjDir :: Ptr GlpProb -> CInt -> IO ()
 foreign import ccall unsafe "c_glp_add_rows" glpAddRows :: Ptr GlpProb -> CInt -> IO CInt
 foreign import ccall unsafe "c_glp_add_cols" glpAddCols :: Ptr GlpProb -> CInt -> IO CInt
-foreign import ccall unsafe "c_glp_set_row_name" glpSetRowName :: Ptr GlpProb -> CInt -> CString -> IO ()
-foreign import ccall unsafe "c_glp_set_col_name" glpSetColName :: Ptr GlpProb -> CInt -> CString -> IO ()
 foreign import ccall unsafe "c_glp_set_row_bnds" glpSetRowBnds :: Ptr GlpProb -> CInt -> CInt -> CDouble -> CDouble -> IO ()
 foreign import ccall unsafe "c_glp_set_col_bnds" glpSetColBnds :: Ptr GlpProb -> CInt -> CInt -> CDouble -> CDouble -> IO ()
 foreign import ccall unsafe "c_glp_set_obj_coef" glpSetObjCoef :: Ptr GlpProb -> CInt -> CDouble -> IO ()
 foreign import ccall unsafe "c_glp_set_mat_row" glpSetMatRow :: Ptr GlpProb -> CInt -> CInt -> Ptr CInt -> Ptr CDouble -> IO ()
-foreign import ccall unsafe "c_glp_create_index" glpCreateIndex :: Ptr GlpProb -> IO ()
-foreign import ccall unsafe "c_glp_find_row" glpFindRow :: Ptr GlpProb -> CString -> IO CInt
-foreign import ccall unsafe "c_glp_find_col" glpFindCol :: Ptr GlpProb -> CString -> IO CInt
+-- foreign import ccall unsafe "c_glp_create_index" glpCreateIndex :: Ptr GlpProb -> IO ()
+-- foreign import ccall unsafe "c_glp_find_row" glpFindRow :: Ptr GlpProb -> CString -> IO CInt
+-- foreign import ccall unsafe "c_glp_find_col" glpFindCol :: Ptr GlpProb -> CString -> IO CInt
 foreign import ccall unsafe "c_glp_solve_simplex" glpSolveSimplex :: Ptr GlpProb -> CInt -> CInt -> CInt -> IO CInt
 foreign import ccall unsafe "c_glp_get_obj_val" glpGetObjVal :: Ptr GlpProb -> IO CDouble
 foreign import ccall unsafe "c_glp_get_row_prim" glpGetRowPrim :: Ptr GlpProb -> CInt -> IO CDouble
@@ -49,12 +49,6 @@ addRows n = GLP $ liftM fromIntegral . flip glpAddRows (fromIntegral n)
 
 addCols :: Int -> GLPK Int
 addCols n = GLP $ liftM fromIntegral . flip glpAddCols (fromIntegral n)
-
-setRowName :: Int -> String -> GLPK ()
-setRowName i nam = GLP $ withCString nam . flip glpSetRowName (fromIntegral i)
-
-setColName :: Int -> String -> GLPK ()
-setColName i nam = GLP $ withCString nam . flip glpSetColName (fromIntegral i)
 
 setRowBounds :: Real a => Int -> Bounds a -> GLPK ()
 setRowBounds i bds = GLP $ \ lp -> onBounds (glpSetRowBnds lp (fromIntegral i)) bds
@@ -81,14 +75,14 @@ setMatRow i row = GLP $ \ lp ->
 		glpSetMatRow lp (fromIntegral i) (fromIntegral len) ixs coeffs
 	where	len = length row
 
-createIndex :: GLPK ()
-createIndex = GLP glpCreateIndex
+-- createIndex :: GLPK ()
+-- createIndex = GLP glpCreateIndex
 
-findRow :: String -> GLPK Int
-findRow nam = GLP $ liftM fromIntegral . withCString nam . glpFindRow
+-- findRow :: String -> GLPK Int
+-- findRow nam = GLP $ liftM fromIntegral . withCString nam . glpFindRow
 
-findCol :: String -> GLPK Int
-findCol nam = GLP $ liftM fromIntegral . withCString nam . glpFindCol
+-- findCol :: String -> GLPK Int
+-- findCol nam = GLP $ liftM fromIntegral . withCString nam . glpFindCol
 
 solveSimplex :: MsgLev -> Int -> Bool -> GLPK ReturnCode
 solveSimplex msglev tmLim presolve = GLP $ \ lp -> liftM (toEnum . fromIntegral) $ glpSolveSimplex lp
@@ -118,29 +112,17 @@ mipSolve msglev brt btt pp fp cuts mipgap tmlim presol =
 		liftM (toEnum . fromIntegral) $ GLP $ \ lp -> glpMipSolve lp msglev'
 						brt' btt' pp' fp' tmlim' cuts' mipgap' presol'
 	where	!msglev' = getMsgLev msglev
-		!brt' = case brt of
-			FirstFrac	-> 1
-			LastFrac	-> 2
-			MostFrac	-> 3
-			DrTom		-> 4
-			HybridP		-> 5
-		!btt' = case btt of
-			DepthFirst	-> 1
-			BreadthFirst	-> 2
-			LocBound	-> 3
-			ProjHeur	-> 4
-		!pp' = case pp of
-			NoPre	-> 0
-			RootPre	-> 1
-			AllPre	-> 2
-		!fp' = if fp then 1 else 0
+		!brt' = 1 + fromIntegral (fromEnum brt)
+		!btt' = 1 + fromIntegral (fromEnum btt)
+		!pp' = fromIntegral (fromEnum pp)
+		!fp' = fromIntegral (fromEnum fp)
 		!cuts' = (if GMI `elem` cuts then 1 else 0) .|.
 			(if MIR `elem` cuts then 2 else 0) .|.
 			(if Cov `elem` cuts then 4 else 0) .|.
 			(if Clq `elem` cuts then 8 else 0)
 		!mipgap' = realToFrac mipgap
 		!tmlim' = fromIntegral (1000 * tmlim)
-		!presol' = if presol then 1 else 0
+		!presol' = fromIntegral (fromEnum presol)
 
 mipObjVal :: GLPK Double
 mipObjVal = liftM realToFrac $ GLP glpMIPObjVal
@@ -158,18 +140,15 @@ writeProblem LP{..} = do
 	let allVars' = fmap (i0 +) allVars
 	sequence_ [setObjCoef i v | (i, v) <- elems $ intersectionWith (,) allVars' objective]
 	j0 <- addRows (length constraints)
-	sequence_ [do	case lab of
-				Nothing	-> return ()
-				Just n	-> setRowName j n
-			setMatRow j
+	sequence_ [do	setMatRow j
 				[(i, v) | (i, v) <- elems (intersectionWith (,) allVars' f)]
 			setRowBounds j bnds
-				| (j, Constr lab f bnds) <- zip [j0..] constraints]
+				| (j, Constr _ f bnds) <- zip [j0..] constraints]
 -- 	createIndex
-	sequence_ [setColBounds (i) bnds |
+	sequence_ [setColBounds i bnds |
 			(i, bnds) <- elems $ intersectionWith (,) allVars' varBounds]
 	sequence_ [setColBounds i Free | i <- elems $ difference allVars' varBounds]
-	sequence_ [setColKind (i) knd |
+	sequence_ [setColKind i knd |
 			(i, knd) <- elems $ intersectionWith (,) allVars' varTypes]
 -- 	writeLP
 	return allVars'
