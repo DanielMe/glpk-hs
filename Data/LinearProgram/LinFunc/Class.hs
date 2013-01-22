@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 
-module Data.LinFunc.Class where
+module Data.LinearProgram.LinFunc.Class where
 
 infixr 4 ^+^
 infixr 4 ^-^

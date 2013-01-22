@@ -1,36 +1,21 @@
-{-# LANGUAGE ScopedTypeVariables, EmptyDataDecls, ForeignFunctionInterface #-}
-module Data.LinearProgram.GLPK.Internal (GLPK, MsgLev (..), Preprocessing (..), Direction(..), BacktrackTechnique(..),
-	BranchingTechnique(..), Cuts(..), ReturnCode(..), gaveAnswer, runGLPK, writeLP, addCols,
+{-# LANGUAGE RecordWildCards, ScopedTypeVariables, EmptyDataDecls, ForeignFunctionInterface #-}
+module Data.LinearProgram.GLPK.Internal (writeProblem, addCols,
 	addRows, createIndex, findCol, findRow, getColPrim, getRowPrim, getObjVal,
 	mipColVal, mipRowVal, mipObjVal, mipSolve, setColBounds, setColKind, setColName, setMatRow,
 	setObjCoef, setObjectiveDirection, setRowBounds, setRowName, solveSimplex) where
 
 import Control.Monad
-import Control.Monad.Trans
-
--- import Debug.Trace
 
 import Foreign.Ptr
 import Foreign.C
-import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 
 import Data.Bits
+import Data.Map hiding (map)
 -- import Data.Bounds
-import Data.LinearProgram.Types
+import Data.LinearProgram.Common
+import Data.LinearProgram.GLPK.Types
 
-data GlpProb
-
-data ReturnCode = Success | InvalidBasis | SingularMatrix | IllConditionedMatrix | 
-	InvalidBounds | SolverFailed | ObjLowerLimReached | ObjUpperLimReached | 
-	IterLimReached | TimeLimReached | NoPrimalFeasible | NoDualFeasible | RootLPOptMissing |
-	SearchTerminated | MipGapTolReached | NoPrimDualFeasSolution | NoConvergence |
-	NumericalInstability | InvalidData | ResultOutOfRange deriving (Eq, Show, Enum)
-
-gaveAnswer :: ReturnCode -> Bool
-gaveAnswer = flip elem [Success, IterLimReached, TimeLimReached, SearchTerminated, MipGapTolReached]
-
-foreign import ccall unsafe "c_glp_create_prob" glpCreateProb :: IO (Ptr GlpProb)
 -- foreign import ccall "c_glp_set_obj_name" glpSetObjName :: Ptr GlpProb -> CString -> IO ()
 foreign import ccall unsafe "c_glp_set_obj_dir" glpSetObjDir :: Ptr GlpProb -> CInt -> IO ()
 foreign import ccall unsafe "c_glp_add_rows" glpAddRows :: Ptr GlpProb -> CInt -> IO CInt
@@ -41,7 +26,6 @@ foreign import ccall unsafe "c_glp_set_row_bnds" glpSetRowBnds :: Ptr GlpProb ->
 foreign import ccall unsafe "c_glp_set_col_bnds" glpSetColBnds :: Ptr GlpProb -> CInt -> CInt -> CDouble -> CDouble -> IO ()
 foreign import ccall unsafe "c_glp_set_obj_coef" glpSetObjCoef :: Ptr GlpProb -> CInt -> CDouble -> IO ()
 foreign import ccall unsafe "c_glp_set_mat_row" glpSetMatRow :: Ptr GlpProb -> CInt -> CInt -> Ptr CInt -> Ptr CDouble -> IO ()
-foreign import ccall unsafe "&c_glp_delete_prob" glpDelProb :: FunPtr (Ptr GlpProb -> IO ())
 foreign import ccall unsafe "c_glp_create_index" glpCreateIndex :: Ptr GlpProb -> IO ()
 foreign import ccall unsafe "c_glp_find_row" glpFindRow :: Ptr GlpProb -> CString -> IO CInt
 foreign import ccall unsafe "c_glp_find_col" glpFindCol :: Ptr GlpProb -> CString -> IO CInt
@@ -55,31 +39,10 @@ foreign import ccall unsafe "c_glp_mip_solve" glpMipSolve ::
 foreign import ccall unsafe "c_glp_mip_obj_val" glpMIPObjVal :: Ptr GlpProb -> IO CDouble
 foreign import ccall unsafe "c_glp_mip_row_val" glpMIPRowVal :: Ptr GlpProb -> CInt -> IO CDouble
 foreign import ccall unsafe "c_glp_mip_col_val" glpMIPColVal :: Ptr GlpProb -> CInt -> IO CDouble
-foreign import ccall unsafe "c_glp_write_lp" glpWriteLP :: Ptr GlpProb -> IO ()
-
-newtype GLPK a = GLP {execGLPK :: Ptr GlpProb -> IO a}
-
-runGLPK :: GLPK a -> IO a
-runGLPK m = do	lp <- newForeignPtr glpDelProb =<< glpCreateProb
-		withForeignPtr lp (execGLPK m)
-
-writeLP :: GLPK ()
-writeLP = GLP glpWriteLP
-
-instance Monad GLPK where
-	{-# INLINE return #-}
-	{-# INLINE (>>=) #-}
-	return x = GLP $ \ _ -> return x
-	m >>= k = GLP $ \ lp -> do	x <- execGLPK m lp
-					execGLPK (k x) lp
-
-instance MonadIO GLPK where
-	liftIO m = GLP (const m)
 
 setObjectiveDirection :: Direction -> GLPK ()
 setObjectiveDirection dir = GLP $ flip glpSetObjDir 
-	(case dir of	Min	-> 1
-			Max	-> 2)
+	(fromIntegral $ 1 + fromEnum dir)
 
 addRows :: Int -> GLPK Int
 addRows n = GLP $ liftM fromIntegral . flip glpAddRows (fromIntegral n)
@@ -127,8 +90,6 @@ findRow nam = GLP $ liftM fromIntegral . withCString nam . glpFindRow
 findCol :: String -> GLPK Int
 findCol nam = GLP $ liftM fromIntegral . withCString nam . glpFindCol
 
-data MsgLev = MsgOff | MsgErr | MsgOn | MsgAll
-
 solveSimplex :: MsgLev -> Int -> Bool -> GLPK ReturnCode
 solveSimplex msglev tmLim presolve = GLP $ \ lp -> liftM (toEnum . fromIntegral) $ glpSolveSimplex lp
 	(getMsgLev msglev)
@@ -137,11 +98,7 @@ solveSimplex msglev tmLim presolve = GLP $ \ lp -> liftM (toEnum . fromIntegral)
 	where	tmLim' = fromIntegral (tmLim * 1000)
 
 getMsgLev :: MsgLev -> CInt
-getMsgLev msglev = case msglev of
-	MsgOff	-> 0
-	MsgErr	-> 1
-	MsgOn	-> 2
-	MsgAll	-> 3
+getMsgLev = fromIntegral . fromEnum
 
 getObjVal :: GLPK Double
 getObjVal = liftM realToFrac $ GLP glpGetObjVal
@@ -153,15 +110,7 @@ getColPrim :: Int -> GLPK Double
 getColPrim i = liftM realToFrac $ GLP (`glpGetColPrim` fromIntegral i)
 
 setColKind :: Int -> VarKind -> GLPK ()
-setColKind i kind = GLP $ \ lp -> glpSetColKind lp (fromIntegral i) (case kind of
-	ContVar -> 1
-	IntVar	-> 2
-	BinVar	-> 3)
-
-data BranchingTechnique = FirstFrac | LastFrac | MostFrac | DrTom | HybridP
-data BacktrackTechnique = DepthFirst | BreadthFirst | LocBound | ProjHeur
-data Preprocessing = NoPre | RootPre | AllPre
-data Cuts = GMI | MIR | Cov | Clq deriving (Eq)
+setColKind i kind = GLP $ \ lp -> glpSetColKind lp (fromIntegral i) (fromIntegral $ 1 + fromEnum kind)
 
 mipSolve :: MsgLev -> BranchingTechnique -> BacktrackTechnique -> Preprocessing -> Bool ->
 	[Cuts] -> Double -> Int -> Bool -> GLPK ReturnCode
@@ -201,3 +150,30 @@ mipRowVal i = liftM realToFrac $ GLP (`glpMIPRowVal` fromIntegral i)
 
 mipColVal :: Int -> GLPK Double
 mipColVal i = liftM realToFrac $ GLP (`glpMIPColVal` fromIntegral i)
+
+writeProblem :: (Ord v, Real c) => LP v c -> GLPK (Map v Int)
+writeProblem LP{..} = do
+	setObjectiveDirection direction
+	i0 <- addCols nVars
+	let allVars' = fmap (i0 +) allVars
+	sequence_ [setObjCoef i v | (i, v) <- elems $ intersectionWith (,) allVars' objective]
+	j0 <- addRows (length constraints)
+	sequence_ [do	case lab of
+				Nothing	-> return ()
+				Just n	-> setRowName j n
+			setMatRow j
+				[(i, v) | (i, v) <- elems (intersectionWith (,) allVars' f)]
+			setRowBounds j bnds
+				| (j, Constr lab f bnds) <- zip [j0..] constraints]
+-- 	createIndex
+	sequence_ [setColBounds (i) bnds |
+			(i, bnds) <- elems $ intersectionWith (,) allVars' varBounds]
+	sequence_ [setColBounds i Free | i <- elems $ difference allVars' varBounds]
+	sequence_ [setColKind (i) knd |
+			(i, knd) <- elems $ intersectionWith (,) allVars' varTypes]
+-- 	writeLP
+	return allVars'
+	where	allVars0 = fmap (const ()) objective `union`
+			unions [fmap (const ()) f | Constr _ f _ <- constraints] `union`
+			fmap (const ()) varBounds `union` fmap (const ()) varTypes
+		(nVars, allVars) = mapAccum (\ n _ -> (n+1, n)) (0 :: Int) allVars0

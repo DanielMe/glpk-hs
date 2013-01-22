@@ -1,6 +1,6 @@
 {-# LANGUAGE UndecidableInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
-module Data.LinFunc (LinFunc, Module(..), var, varSum, (*&), vsum, combination, linCombination) where
+module Data.LinearProgram.LinFunc (LinFunc, Module(..), var, varSum, (*&), vsum, combination, linCombination) where
 
 import Control.Monad
 
@@ -12,7 +12,7 @@ import Data.Array.IArray
 -- import Data.Array.Unboxed
 
 -- import Data.LinFunc.TH
-import Data.LinFunc.Class
+import Data.LinearProgram.LinFunc.Class
 
 -- | @'LinFunc' v c@ is a linear combination of variables of type @v@ with coefficients
 -- from @c@.  Formally, this is the free @c@-module on @v@.  
@@ -115,6 +115,7 @@ vsum = foldr (^+^) zero
 combination :: Module r m => [(r, m)] -> m
 combination xs = vsum [r *^ m | (r, m) <- xs]
 
+{-# INLINE linCombination #-}
 -- | Given a set of basic variables and coefficients, returns the linear combination obtained
 -- by summing.
 linCombination :: (Ord v, Num r) => [(r, v)] -> LinFunc v r

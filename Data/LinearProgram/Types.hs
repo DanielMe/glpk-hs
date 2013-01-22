@@ -4,7 +4,7 @@ module Data.LinearProgram.Types where
 
 import Data.Monoid
 
-data VarKind = ContVar | IntVar | BinVar deriving (Eq, Ord, Show, Read)
+data VarKind = ContVar | IntVar | BinVar deriving (Eq, Ord, Enum, Show, Read)
 
 -- instance NFData VarKind
 
@@ -12,7 +12,7 @@ instance Monoid VarKind where
 	mempty = ContVar
 	mappend = max
 
-data Direction = Min | Max deriving (Eq, Ord, Show, Read)
+data Direction = Min | Max deriving (Eq, Ord, Enum, Show, Read)
 
 -- instance NFData Direction
 
