@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables, EmptyDataDecls, ForeignFunctionInterface #-}
 module Data.LinearProgram.GLPK.Internal (GLPK, MsgLev (..), Preprocessing (..), Direction(..), BacktrackTechnique(..),
-	BranchingTechnique(..), Cuts(..), runGLPK, writeLP, addCols,
+	BranchingTechnique(..), Cuts(..), ReturnCode(..), gaveAnswer, runGLPK, writeLP, addCols,
 	addRows, createIndex, findCol, findRow, getColPrim, getRowPrim, getObjVal,
 	mipColVal, mipRowVal, mipObjVal, mipSolve, setColBounds, setColKind, setColName, setMatRow,
 	setObjCoef, setObjectiveDirection, setRowBounds, setRowName, solveSimplex) where
@@ -20,6 +20,15 @@ import Data.Bits
 import Data.LinearProgram.Types
 
 data GlpProb
+
+data ReturnCode = Success | InvalidBasis | SingularMatrix | IllConditionedMatrix | 
+	InvalidBounds | SolverFailed | ObjLowerLimReached | ObjUpperLimReached | 
+	IterLimReached | TimeLimReached | NoPrimalFeasible | NoDualFeasible | RootLPOptMissing |
+	SearchTerminated | MipGapTolReached | NoPrimDualFeasSolution | NoConvergence |
+	NumericalInstability | InvalidData | ResultOutOfRange deriving (Eq, Show, Enum)
+
+gaveAnswer :: ReturnCode -> Bool
+gaveAnswer = flip elem [Success, IterLimReached, TimeLimReached, SearchTerminated, MipGapTolReached]
 
 foreign import ccall unsafe "c_glp_create_prob" glpCreateProb :: IO (Ptr GlpProb)
 -- foreign import ccall "c_glp_set_obj_name" glpSetObjName :: Ptr GlpProb -> CString -> IO ()
@@ -120,8 +129,8 @@ findCol nam = GLP $ liftM fromIntegral . withCString nam . glpFindCol
 
 data MsgLev = MsgOff | MsgErr | MsgOn | MsgAll
 
-solveSimplex :: MsgLev -> Int -> Bool -> GLPK Bool
-solveSimplex msglev tmLim presolve = GLP $ \ lp -> liftM (== 0) $ glpSolveSimplex lp
+solveSimplex :: MsgLev -> Int -> Bool -> GLPK ReturnCode
+solveSimplex msglev tmLim presolve = GLP $ \ lp -> liftM (toEnum . fromIntegral) $ glpSolveSimplex lp
 	(getMsgLev msglev)
 	tmLim'
 	(if presolve then 1 else 0)
@@ -155,9 +164,9 @@ data Preprocessing = NoPre | RootPre | AllPre
 data Cuts = GMI | MIR | Cov | Clq deriving (Eq)
 
 mipSolve :: MsgLev -> BranchingTechnique -> BacktrackTechnique -> Preprocessing -> Bool ->
-	[Cuts] -> Double -> Int -> Bool -> GLPK Bool
+	[Cuts] -> Double -> Int -> Bool -> GLPK ReturnCode
 mipSolve msglev brt btt pp fp cuts mipgap tmlim presol =
-		liftM (== 0) $ GLP $ \ lp -> glpMipSolve lp msglev'
+		liftM (toEnum . fromIntegral) $ GLP $ \ lp -> glpMipSolve lp msglev'
 						brt' btt' pp' fp' tmlim' cuts' mipgap' presol'
 	where	!msglev' = getMsgLev msglev
 		!brt' = case brt of
