@@ -1,10 +1,11 @@
 {-# OPTIONS -funbox-strict-fields #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections, RecordWildCards #-}
 
 module Data.LinearProgram.GLPK (GLPOpts(..), MsgLev(..), BranchingTechnique(..),
-	BacktrackTechnique(..), Preprocessing(..), Cuts(..), 
+	BacktrackTechnique(..), Preprocessing(..), Cuts(..), ReturnCode(..), 
 	simplexDefaults, mipDefaults, glpSolveVars, glpSolveAll) where
 
+import Control.Monad
 import Control.Monad.Trans
 
 -- import Debug.Trace
@@ -36,58 +37,62 @@ mipDefaults = MipOpts MsgOn 10000 True DrTom LocBound AllPre False [] 0.0
 
 -- | Solves the linear or mixed integer programming problem.  Returns
 -- the value of the objective function, and the values of the variables.
-glpSolveVars :: (Ord v, Show v, Real c) => GLPOpts -> LP v c -> IO (Double, Map v Double)
+glpSolveVars :: (Ord v, Show v, Real c) => GLPOpts -> LP v c -> IO (ReturnCode, Maybe (Double, Map v Double))
 glpSolveVars opts@SimplexOpts{} lp = runGLPK $ do
-	Just vars <- doGLP opts lp
-	obj <- getObjVal
-	vals <- sequence [do
-		val <- getColPrim i
-		return (v, val)
-			| (v, i) <- assocs vars]
-	return (obj, fromDistinctAscList vals)
+	(code, vars) <- doGLP opts lp
+	liftM (code, ) $ maybe (return Nothing) ( \ vars -> do
+		obj <- getObjVal
+		vals <- sequence [do
+			val <- getColPrim i
+			return (v, val)
+				| (v, i) <- assocs vars]
+		return (Just (obj, fromDistinctAscList vals))) vars
 glpSolveVars opts@MipOpts{} lp = runGLPK $ do
-	Just vars <- doGLP opts lp
-	obj <- mipObjVal
-	vals <- sequence [do
-		val <- mipColVal i
-		return (v, val)
-			| (v, i) <- assocs vars]
-	return (obj, fromDistinctAscList vals)
+	(code, vars) <- doGLP opts lp
+	liftM (code, ) $ maybe (return Nothing) (\ vars -> do
+		obj <- mipObjVal
+		vals <- sequence [do
+			val <- mipColVal i
+			return (v, val)
+				| (v, i) <- assocs vars]
+		return (Just (obj, fromDistinctAscList vals))) vars
 
 -- | Solves the linear or mixed integer programming problem.  Returns
 -- the value of the objective function, the values of the variables,
 -- and the values of any labeled rows.
-glpSolveAll :: (Ord v, Show v, Real c) => GLPOpts -> LP v c -> IO (Double, Map v Double, Map String Double)
+glpSolveAll :: (Ord v, Show v, Real c) => GLPOpts -> LP v c -> IO (ReturnCode, Maybe (Double, Map v Double, Map String Double))
 glpSolveAll opts@SimplexOpts{} lp@LP{..} = runGLPK $ do
-	Just vars <- doGLP opts lp
-	obj <- getObjVal
-	vals <- sequence [do
-		val <- getColPrim i
-		return (v, val)
-			| (v, i) <- assocs vars]
-	rows <- sequence [maybe (return Nothing) (\ nam -> do
-				val <- getRowPrim i
-				return (Just (nam, val))) nam
-				| (i, Constr nam _ _) <- zip [0..] constraints]
-	return (obj, fromDistinctAscList vals, fromDistinctAscList (catMaybes rows))
+	(code, vars) <- doGLP opts lp
+	liftM (code, ) $ maybe (return Nothing) (\ vars -> do
+		obj <- getObjVal
+		vals <- sequence [do
+			val <- getColPrim i
+			return (v, val)
+				| (v, i) <- assocs vars]
+		rows <- sequence [maybe (return Nothing) (\ nam -> do
+					val <- getRowPrim i
+					return (Just (nam, val))) nam
+					| (i, Constr nam _ _) <- zip [0..] constraints]
+		return (Just (obj, fromDistinctAscList vals, fromDistinctAscList (catMaybes rows)))) vars
 glpSolveAll opts@MipOpts{} lp@LP{..} = runGLPK $ do
-	Just vars <- doGLP opts lp
-	obj <- mipObjVal
-	vals <- sequence [do
-		val <- mipColVal i
-		return (v, val)
-			| (v, i) <- assocs vars]
-	rows <- sequence [maybe (return Nothing) (\ nam -> do
-				val <- mipRowVal i
-				return (Just (nam, val))) nam
-				| (i, Constr nam _ _) <- zip [0..] constraints]
-	return (obj, fromDistinctAscList vals, fromDistinctAscList (catMaybes rows))
+	(code, vars) <- doGLP opts lp
+	liftM (code, ) $ maybe (return Nothing) (\ vars -> do
+		obj <- mipObjVal
+		vals <- sequence [do
+			val <- mipColVal i
+			return (v, val)
+				| (v, i) <- assocs vars]
+		rows <- sequence [maybe (return Nothing) (\ nam -> do
+					val <- mipRowVal i
+					return (Just (nam, val))) nam
+					| (i, Constr nam _ _) <- zip [0..] constraints]
+		return (Just (obj, fromDistinctAscList vals, fromDistinctAscList (catMaybes rows)))) vars
 
-doGLP :: (Ord v, Show v, Real c) => GLPOpts -> LP v c -> GLPK (Maybe (Map v Int))
+doGLP :: (Ord v, Show v, Real c) => GLPOpts -> LP v c -> GLPK (ReturnCode, Maybe (Map v Int))
 doGLP SimplexOpts{..} lp = do
 	vars <- writeProblem lp
 	success <- solveSimplex msgLev tmLim presolve
-	return (Just vars)
+	return (success, guard (gaveAnswer success) >> Just vars)
 doGLP MipOpts{..} lp = do
 	vars <- writeProblem lp
 -- 	time <- getTime
@@ -95,7 +100,7 @@ doGLP MipOpts{..} lp = do
 -- 	time' <- getTime
 	let tmLim' = tmLim  --- round (toRational (time' `diffUTCTime` time))
 	success <- mipSolve msgLev brTech btTech ppTech fpHeur cuts mipGap (fromIntegral tmLim') presolve
-	return (Just vars) --(if success then Just vars else Nothing)
+	return (success, guard (gaveAnswer success) >> Just vars) --(if success then Just vars else Nothing)
 -- 	where	getTime = liftIO getCurrentTime
 
 writeProblem :: (Ord v, Show v, Real c) => LP v c -> GLPK (Map v Int)
