@@ -7,13 +7,16 @@ module Data.LinearProgram.GLPK (GLPOpts(..), MsgLev(..), BranchingTechnique(..),
 
 import Control.Monad.Trans
 
+-- import Debug.Trace
+
 import Data.Map
 import Data.Maybe (catMaybes)
 import Data.LinearProgram.Spec
 import Data.LinearProgram.Types
 import Data.LinearProgram.GLPK.Internal
 
-import System.CPUTime
+import Data.Time.Clock
+-- import System.Time
 
 import GHC.Exts(build)
 
@@ -33,7 +36,7 @@ mipDefaults = MipOpts MsgOn 10000 True DrTom LocBound AllPre False [] 0.0
 
 -- | Solves the linear or mixed integer programming problem.  Returns
 -- the value of the objective function, and the values of the variables.
-glpSolveVars :: (Ord v, Real c) => GLPOpts -> LP v c -> IO (Double, Map v Double)
+glpSolveVars :: (Ord v, Show v, Real c) => GLPOpts -> LP v c -> IO (Double, Map v Double)
 glpSolveVars opts@SimplexOpts{} lp = runGLPK $ do
 	Just vars <- doGLP opts lp
 	obj <- getObjVal
@@ -54,7 +57,7 @@ glpSolveVars opts@MipOpts{} lp = runGLPK $ do
 -- | Solves the linear or mixed integer programming problem.  Returns
 -- the value of the objective function, the values of the variables,
 -- and the values of any labeled rows.
-glpSolveAll :: (Ord v, Real c) => GLPOpts -> LP v c -> IO (Double, Map v Double, Map String Double)
+glpSolveAll :: (Ord v, Show v, Real c) => GLPOpts -> LP v c -> IO (Double, Map v Double, Map String Double)
 glpSolveAll opts@SimplexOpts{} lp@LP{..} = runGLPK $ do
 	Just vars <- doGLP opts lp
 	obj <- getObjVal
@@ -80,40 +83,44 @@ glpSolveAll opts@MipOpts{} lp@LP{..} = runGLPK $ do
 				| (i, Constr nam _ _) <- zip [0..] constraints]
 	return (obj, fromDistinctAscList vals, fromDistinctAscList (catMaybes rows))
 
-doGLP :: (Ord v, Real c) => GLPOpts -> LP v c -> GLPK (Maybe (Map v Int))
+doGLP :: (Ord v, Show v, Real c) => GLPOpts -> LP v c -> GLPK (Maybe (Map v Int))
 doGLP SimplexOpts{..} lp = do
 	vars <- writeProblem lp
 	success <- solveSimplex msgLev tmLim presolve
-	return (if success then Just vars else Nothing)
+	return (Just vars)
 doGLP MipOpts{..} lp = do
 	vars <- writeProblem lp
-	time <- getTime
-	solveSimplex msgLev tmLim presolve
-	time' <- getTime
-	let tmLim' = (fromIntegral tmLim - time' + time + 1000000000000 - 1) `quot` 1000000000000
+-- 	time <- getTime
+-- 	solveSimplex msgLev tmLim presolve
+-- 	time' <- getTime
+	let tmLim' = tmLim  --- round (toRational (time' `diffUTCTime` time))
 	success <- mipSolve msgLev brTech btTech ppTech fpHeur cuts mipGap (fromIntegral tmLim') presolve
-	return (if success then Just vars else Nothing)
-	where	getTime = liftIO getCPUTime
+	return (Just vars) --(if success then Just vars else Nothing)
+-- 	where	getTime = liftIO getCurrentTime
 
-writeProblem :: (Ord v, Real c) => LP v c -> GLPK (Map v Int)
+writeProblem :: (Ord v, Show v, Real c) => LP v c -> GLPK (Map v Int)
 writeProblem LP{..} = do
 	setObjectiveDirection direction
 	i0 <- addCols nVars
-	sequence_ [setObjCoef (i + i0) v | (i, v) <- elems $ intersectionWith (,) allVars objective]
+	let allVars' = fmap (i0 +) allVars
+	sequence_ [setColName i (show v) | (v, i) <- assocs allVars']
+	sequence_ [setObjCoef i v | (i, v) <- elems $ intersectionWith (,) allVars' objective]
 	j0 <- addRows (length constraints)
 	sequence_ [do	case lab of
 				Nothing	-> return ()
-				Just n	-> setRowName (j0 + j) n
-			setMatRow (j0 + j)
-				(elems (intersectionWith (,) allVars f))
-			setRowBounds (j0 + j) bnds
-				| (j, Constr lab f bnds) <- zip [0..] constraints]
+				Just n	-> setRowName j n
+			setMatRow j
+				[(i, v) | (i, v) <- elems (intersectionWith (,) allVars' f)]
+			setRowBounds j bnds
+				| (j, Constr lab f bnds) <- zip [j0..] constraints]
 	createIndex
-	sequence_ [setColBounds (i0 + i) bnds |
-			(i, bnds) <- elems $ intersectionWith (,) allVars varBounds]
-	sequence_ [setColKind (i0 + i) knd |
-			(i, knd) <- elems $ intersectionWith (,) allVars varTypes]
-	return allVars
+	sequence_ [setColBounds (i) bnds |
+			(i, bnds) <- elems $ intersectionWith (,) allVars' varBounds]
+	sequence_ [setColBounds i Free | i <- elems $ difference allVars' varBounds]
+	sequence_ [setColKind (i) knd |
+			(i, knd) <- elems $ intersectionWith (,) allVars' varTypes]
+-- 	writeLP
+	return allVars'
 	where	allVars0 = fmap (const ()) objective `union`
 			unions [fmap (const ()) f | Constr _ f _ <- constraints] `union`
 			fmap (const ()) varBounds `union` fmap (const ()) varTypes

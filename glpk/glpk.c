@@ -8,6 +8,10 @@ glp_prob *c_glp_create_prob(){
 	return lp;
 }
 
+void c_glp_write_lp (glp_prob *lp){
+  	glp_write_lp(lp, 0, "test.cplex");
+}
+
 void c_glp_set_obj_name(glp_prob *lp, const char *name){
   	glp_set_obj_name(lp, name);
 }
@@ -99,7 +103,8 @@ int c_glp_mip_solve(glp_prob *lp, int msg_lev, int br_tech, int bt_tech, int pp_
 	iocp.br_tech = br_tech;
 	iocp.bt_tech = bt_tech;
 	iocp.pp_tech = pp_tech;
-	iocp.fp_heur = fp_heur;
+	iocp.fp_heur = fp_heur ? GLP_ON : GLP_OFF;
+// 	printf ("fp %d\n", iocp.fp_heur);
 	iocp.gmi_cuts = cuts & 1 ? GLP_ON : GLP_OFF;
 	iocp.mir_cuts = cuts & 2 ? GLP_ON : GLP_OFF;
 	iocp.cov_cuts = cuts & 4 ? GLP_ON : GLP_OFF;

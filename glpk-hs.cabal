@@ -1,5 +1,5 @@
 Name:           glpk-hs
-Version:        0.0.0
+Version:        0.0.1
 Author:         Louis Wasserman
 License:        GPL
 License-file:   LICENSE
@@ -20,7 +20,7 @@ build-type:     Simple
 
 extra-source-files: examples/example1.hs
 
-Build-Depends:    base >= 3 && < 5, array, containers, mtl
+Build-Depends:    base >= 3 && < 5, array, containers, mtl, time
 Exposed-modules:  Data.LinFunc,
                   Data.LinearProgram,
                   Data.LinearProgram.GLPK,

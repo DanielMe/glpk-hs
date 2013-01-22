@@ -1,8 +1,12 @@
 module Data.LinearProgram.Types where
 
+-- import Control.DeepSeq
+
 import Data.Monoid
 
 data VarKind = ContVar | IntVar | BinVar deriving (Eq, Ord, Show, Read)
+
+-- instance NFData VarKind
 
 instance Monoid VarKind where
 	mempty = ContVar
@@ -10,9 +14,12 @@ instance Monoid VarKind where
 
 data Direction = Min | Max deriving (Eq, Ord, Show, Read)
 
+-- instance NFData Direction
 
 data Bounds a =
 	Free | LBound a | UBound a | Equ a | Bound a a deriving (Eq, Show, Read)
+
+-- instance NFData (Bounds a)
 
 -- Bounds form a monoid under intersection.
 instance Ord a => Monoid (Bounds a) where
