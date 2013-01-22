@@ -12,8 +12,8 @@ import Data.LinearProgram.GLPK.IO.Internal
 
 -- | Read a linear program from a file in CPLEX LP format.
 readLP :: FilePath -> IO (LP String Double)
-readLP = runGLPK . readGLP_LP
+readLP = runGLPK . readGLPLP
 
 -- | Write a linear program to a file in CPLEX LP format.
 writeLP :: (Ord v, Show v, Real c) => FilePath -> LP v c -> IO ()
-writeLP file = runGLPK . writeGLP_LP file
+writeLP file = runGLPK . writeGLPLP file

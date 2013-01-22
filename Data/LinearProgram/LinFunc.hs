@@ -2,16 +2,14 @@
 
 module Data.LinearProgram.LinFunc (LinFunc, Module(..), var, varSum, (*&), vsum, combination, linCombination) where
 
-import Control.Monad
+import Control.Applicative
 
 import qualified Data.Map as M
 import qualified Data.IntMap as IM
 import Data.Ratio
 import Data.Array.Base
 import Data.Array.IArray
--- import Data.Array.Unboxed
 
--- import Data.LinFunc.TH
 import Data.LinearProgram.LinFunc.Class
 
 -- | @'LinFunc' v c@ is a linear combination of variables of type @v@ with coefficients
@@ -52,8 +50,8 @@ instance Integral a => Module (Ratio a) (Ratio a) where
 instance Module r m => Module r (a -> m) where
 	(*^) = fmap . (*^)
 	zero = const zero
-	(^+^) = liftM2 (^+^)
-	(^-^) = liftM2 (^-^)
+	(^+^) = liftA2 (^+^)
+	(^-^) = liftA2 (^-^)
 	neg = fmap neg
 
 instance (Ord k, Module r m) => Module r (M.Map k m) where

@@ -2,7 +2,7 @@
 
 module Data.LinearProgram.GLPK.Types where
 
-import Control.Monad.Trans
+import Control.Monad.Trans (MonadIO (..))
 
 import Foreign.Ptr
 import Foreign.ForeignPtr

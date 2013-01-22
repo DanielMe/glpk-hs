@@ -11,19 +11,20 @@ module Data.LinearProgram.LPMonad.Internal (
 	execLPT,
 	evalLPM,
 	evalLPT,
-	-- * Objective configuration
+	-- * Constructing the LP
+	-- ** Objective configuration
 	setDirection,
 	setObjective,
 	addObjective,
 	addWeightedObjective,
-	-- * Two-function constraints
+	-- ** Two-function constraints
 	leq,
 	equal,
 	geq,
 	leq',
 	equal',
 	geq',
-	-- * One-function constraints
+	-- ** One-function constraints
 	leqTo,
 	equalTo,
 	geqTo,
@@ -32,7 +33,7 @@ module Data.LinearProgram.LPMonad.Internal (
 	equalTo',
 	geqTo',
 	constrain',
-	-- * Variable constraints
+	-- ** Variable constraints
 	varLeq,
 	varEq,
 	varGeq,
@@ -121,7 +122,7 @@ geqTo f v = constrain f (LBound v)
 	Monad m => String -> LinFunc v c -> c -> LPT v c m () #-}
 {-# SPECIALIZE leqTo' :: String -> LinFunc v c -> c -> LPM v c (),
 	Monad m => String -> LinFunc v c -> c -> LPT v c m () #-}
--- | Sets a labelled constraint on a linear function in the variables.
+-- | Sets a labeled constraint on a linear function in the variables.
 equalTo', leqTo', geqTo' :: MonadState (LP v c) m => String -> LinFunc v c -> c -> m ()
 equalTo' lab f v = constrain' lab f (Equ v)
 leqTo' lab f v = constrain' lab f (UBound v)
@@ -134,7 +135,8 @@ geqTo' lab f v = constrain' lab f (LBound v)
 {-# SPECIALIZE varGeq :: (Ord v, Ord c) => v -> c -> LPM v c (),
 	(Ord v, Ord c, Monad m) => v -> c -> LPT v c m () #-}
 -- | Sets a constraint on the value of a variable.  If you constrain a variable more than once,
--- the constraints will be combined.
+-- the constraints will be combined.  If the constraints are mutually contradictory,
+-- an error will be generated.  This is more efficient than adding an equivalent function constraint.
 varEq, varLeq, varGeq :: (Ord v, Ord c, MonadState (LP v c) m) => v -> c -> m ()
 varEq v c = setVarBounds v (Equ c)
 varLeq v c = setVarBounds v (UBound c)
@@ -143,7 +145,8 @@ varGeq v c = setVarBounds v (LBound c)
 {-# SPECIALIZE varBds :: (Ord v, Ord c) => v -> c -> c -> LPM v c (),
 	(Ord v, Ord c, Monad m) => v -> c -> c -> LPT v c m () #-}
 -- | Bounds the value of a variable on both sides.  If you constrain a variable more than once,
--- the constraints will be combined.
+-- the constraints will be combined.  If the constraints are mutually contradictory,
+-- an error will be generated.  This is more efficient than adding an equivalent function constraint.
 varBds :: (Ord v, Ord c, MonadState (LP v c) m) => v -> c -> c -> m ()
 varBds v l u = setVarBounds v (Bound l u)
 
@@ -188,6 +191,8 @@ addWeightedObjective wt obj = addObjective (wt *^ obj)
 	(Ord v, Ord c, Monad m) => v -> Bounds c -> LPT v c m () #-}
 -- | The most general way to set constraints on a variable.
 -- If you constrain a variable more than once, the constraints will be combined.
+-- If you combine mutually contradictory constraints, an error will be generated.
+-- This is more efficient than creating an equivalent function constraint.
 setVarBounds :: (Ord v, Ord c, MonadState (LP v c) m) => v -> Bounds c -> m ()
 setVarBounds var bds = modify addBds where
 	addBds lp@LP{..} = lp{varBounds = insertWith mappend var bds varBounds}

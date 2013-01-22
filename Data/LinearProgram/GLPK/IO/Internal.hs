@@ -1,9 +1,9 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
-module Data.LinearProgram.GLPK.IO.Internal (readGLP_LP, writeGLP_LP) where
+module Data.LinearProgram.GLPK.IO.Internal (readGLPLP, writeGLPLP) where
 
 import Control.Monad
-import Control.Monad.Trans
+import Control.Monad.Trans (liftIO, lift)
 
 import Data.Map hiding (map, filter)
 
@@ -13,6 +13,8 @@ import Data.LinearProgram.LPMonad.Internal
 
 foreign import ccall unsafe "c_glp_write_lp" glpWriteLP :: Ptr GlpProb -> CString -> IO ()
 foreign import ccall unsafe "c_glp_read_lp" glpReadLP :: Ptr GlpProb -> CString -> IO ()
+foreign import ccall unsafe "c_glp_set_col_name" glpSetColName :: Ptr GlpProb -> CInt -> CString -> IO ()
+foreign import ccall unsafe "c_glp_set_row_name" glpSetRowName :: Ptr GlpProb -> CInt -> CString -> IO ()
 foreign import ccall unsafe "c_glp_get_obj_dir" glpGetObjDir :: Ptr GlpProb -> IO CInt
 foreign import ccall unsafe "c_glp_get_num_rows" glpGetNumRows :: Ptr GlpProb -> IO CInt
 foreign import ccall unsafe "c_glp_get_num_cols" glpGetNumCols :: Ptr GlpProb -> IO CInt
@@ -63,6 +65,12 @@ getCInt f i = GLP $ \ lp -> liftM fromIntegral $ f lp (fromIntegral i)
 getCDouble :: (Ptr GlpProb -> CInt -> IO CDouble) -> Int -> GLPK Double
 getCDouble f i = GLP $ \ lp -> liftM realToFrac $ f lp (fromIntegral i)
 
+setRowName :: Int -> String -> GLPK ()
+setRowName i nam = GLP $ withCString nam . flip glpSetRowName (fromIntegral i)
+
+setColName :: Int -> String -> GLPK ()
+setColName i nam = GLP $ withCString nam . flip glpSetColName (fromIntegral i)
+
 loadBounds :: (Int -> GLPK Double) -> (Int -> GLPK Double) ->
 	(Int -> GLPK Int) -> Int -> GLPK (Bounds Double)
 loadBounds lb ub tp i = do
@@ -89,8 +97,8 @@ getRows = do	n <- getNumRows
 			return (i, zip (map fromIntegral ixsL) (map realToFrac coefsL))
 			| i <- [1..n]]
 
-readGLP_LP :: FilePath -> GLPK (LP String Double)
-readGLP_LP file = execLPT $ do
+readGLPLP :: FilePath -> GLPK (LP String Double)
+readGLPLP file = execLPT $ do
 	lift $ readLP file
 	setDirection =<< lift getDir
 	nCols <- lift getNumCols
@@ -117,7 +125,9 @@ readGLP_LP file = execLPT $ do
 	setObjective (fromList (filter ((/= 0) . snd) obj))
 		
 
-writeGLP_LP :: (Show v, Ord v, Real c) => FilePath -> LP v c -> GLPK ()
-writeGLP_LP file lp = do
-	writeProblem lp
+writeGLPLP :: (Show v, Ord v, Real c) => FilePath -> LP v c -> GLPK ()
+writeGLPLP file lp = do
+	vars <- writeProblem lp
+	sequence_ [setColName i (show v) | (v, i) <- assocs vars]
+	sequence_ [setRowName i lab | (i, Constr (Just lab) _ _) <- zip [1..] (constraints lp)]
 	writeLP file

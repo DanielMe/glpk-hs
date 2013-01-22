@@ -19,20 +19,10 @@ module Data.LinearProgram.GLPK.Solver (
 	Cuts(..)) where 
 
 import Control.Monad
--- import Control.Monad.Trans
-
--- import Debug.Trace
 
 import Data.Map
--- import Data.Maybe (catMaybes)
-import Data.LinearProgram.Common
-import Data.LinearProgram.GLPK.Internal
-import Data.LinearProgram.GLPK.Types
-
--- import Data.Time.Clock
--- import System.Time
-
-import GHC.Exts(build)
+import Data.LinearProgram.Spec
+import Data.LinearProgram.GLPK.Common
 
 -- | Options available for customizing GLPK operations.  This also determines
 -- which kind of solving is performed -- relaxed LP, or MIP.
@@ -95,7 +85,7 @@ glpSolveAll opts@MipOpts{} lp@LP{..} = runGLPK $ do
 			val <- mipColVal i
 			return (v, val)
 				| (v, i) <- assocs vars]
-		rows <- sequence [liftM (RowVal c) (getRowPrim i)
+		rows <- sequence [liftM (RowVal c) (mipRowVal i)
 					| (i, c) <- zip [1..] constraints]
 		return (Just (obj, fromDistinctAscList vals, rows))) vars
 
@@ -113,9 +103,3 @@ doGLP MipOpts{..} lp = do
 	success <- mipSolve msgLev brTech btTech ppTech fpHeur cuts mipGap (fromIntegral tmLim') presolve
 	return (success, guard (gaveAnswer success) >> Just vars) --(if success then Just vars else Nothing)
 -- 	where	getTime = liftIO getCurrentTime
-		
-{-# RULES
-	"assocs" assocs = \ m -> build (\ c n -> foldWithKey (curry c) n m);
-	"elems" elems = \ m -> build (\ c n -> foldWithKey (const c) n m);
-	"keys" keys = \ m -> build (\ c n -> foldWithKey (\ k _ -> c k) n m);
-	#-}
