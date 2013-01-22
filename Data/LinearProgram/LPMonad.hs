@@ -6,6 +6,8 @@
 -- for example separating different families of constraints in the problem specification.
 -- 
 -- Many of these functions should be executed in either the @'LPM' v c@ or the @'LPT' v c 'IO'@ monad.
+-- If you wish to generate new variables on an ad-hoc basis, rather than supplying your own variable type, use the
+-- 'VarSource' or 'VarSourceT' monads in your transformer stack.
 module Data.LinearProgram.LPMonad (
 	module Data.LinearProgram.LPMonad.Internal,
 	module Data.LinearProgram.LPMonad.VarSource,
@@ -76,13 +78,13 @@ writeLPToFile :: (Ord v, Show v, Real c, MonadState (LP v c) m, MonadIO m) =>
 	FilePath -> m ()
 writeLPToFile file = get >>= liftIO . writeLP file 
 
-{-# SPECIALIZE readLPFromFile :: (Ord v, Read v, Ord c, Fractional c, Module r c) => FilePath -> LPT v c IO () #-}
+{-# SPECIALIZE readLPFromFile :: (Ord v, Read v, Fractional c) => FilePath -> LPT v c IO () #-}
 -- | Reads a linear program from the specified file in CPLEX LP format, overwriting
 -- the current linear program.  Uses 'read' and 'realToFrac' to translate to the specified type.
 -- Warning: this may not work on all files written using 'writeLPToFile', since variable names
 -- may be changed.
 -- (This is a binding to GLPK, not a Haskell implementation of CPLEX.)
-readLPFromFile :: (Ord v, Read v, Ord c, Fractional c, Group c, MonadState (LP v c) m, MonadIO m) =>
+readLPFromFile :: (Ord v, Read v, Fractional c, MonadState (LP v c) m, MonadIO m) =>
 	FilePath -> m ()
 readLPFromFile = put <=< liftIO . readLP
 
