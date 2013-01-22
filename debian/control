@@ -1,0 +1,64 @@
+Source: glpk-hs
+Section: haskell
+Priority: extra
+Maintainer: EwQLU4DBjajyD5rv <mgfyrpuxxg3s5okh@gmail.com>
+Build-Depends: debhelper (>= 7)
+  , cdbs
+  , haskell-devscripts (>= 0.8.12)
+  , ghc
+  , ghc-prof
+  , libglpk-dev
+Build-Depends-Indep: ghc-doc
+Standards-Version: 3.9.2
+Homepage: http://hackage.haskell.org/package/glpk-hs
+Vcs-Git: git://github.com/lowasser/glpk-hs.git
+Vcs-Browser: https://github.com/lowasser/glpk-hs
+
+Package: libghc-glpk-hs-dev
+Architecture: any
+Depends: ${haskell:Depends}
+  , ${shlibs:Depends}
+  , ${misc:Depends}
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Provides: ${haskell:Provides}
+Description: Haskell bindings for GLPK
+ Friendly interface to GLPK's linear programming and mixed integer
+ programming features. Intended for easy extensibility, with a general,
+ pure-Haskell representation of linear programs. Also includes usefully
+ general algebraic structures.
+ .
+ This package provides a library for the Haskell programming language.
+ See http://www.haskell.org/ for more information on Haskell.
+
+Package: libghc-glpk-hs-prof
+Architecture: any
+Depends: ${haskell:Depends}
+  , ${misc:Depends}
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Provides: ${haskell:Provides}
+Description: Short description of foo; profiling libraries
+ Friendly interface to GLPK's linear programming and mixed integer
+ programming features. Intended for easy extensibility, with a general,
+ pure-Haskell representation of linear programs. Also includes usefully
+ general algebraic structures.
+ .
+ This package provides a library for the Haskell programming language, compiled
+ for profiling.  See http://www.haskell.org/ for more information on Haskell.
+
+Package: libghc-glpk-hs-doc
+Section: doc
+Architecture: all
+Depends: ${misc:Depends}, ${haskell:Depends}
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Description: Haskell bindings for GLPK; documentation
+ Friendly interface to GLPK's linear programming and mixed integer
+ programming features. Intended for easy extensibility, with a general,
+ pure-Haskell representation of linear programs. Also includes usefully
+ general algebraic structures.
+ .
+ This package provides the documentation for a library for the Haskell
+ programming language.
+ See http://www.haskell.org/ for more information on Haskell.

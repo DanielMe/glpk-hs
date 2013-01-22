@@ -1,0 +1,12 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: glpk-hs
+Upstream-Contact: Louis Wasserman <wasserman.louis@gmail.com>
+Source: http://hackage.haskell.org/package/glpk-hs
+
+Files: *
+Copyright: 2010 Louis Wasserman
+License: BSD-3-clause
+
+Files: debian/*
+Copyright: 2013 EwQLU4DBjajyD5rv
+License: WTFPL
