@@ -1,5 +1,5 @@
 Name:           glpk-hs
-Version:        0.3.3
+Version:        0.3.4
 Author:         Louis Wasserman
 License:        BSD3
 License-file:   LICENSE
@@ -11,8 +11,8 @@ Description:
     with a general, pure-Haskell representation of linear programs.  Also includes usefully general algebraic structures.
     
     To design a linear programming problem, 
-    use "Data.LinearProgram.LPMonad" to construct the constraints and specifications.  Linear functions are essentially specified
-    as @Data.Map@s from variables to their coefficients, and functions for manipulating them are available in "Data.LinFunc".
+    use "Control.Monad.LPMonad" to construct the constraints and specifications.  Linear functions are essentially specified
+    as @Data.Map@s from variables to their coefficients, and functions for manipulating them are available in "Data.LinearProgram.LinExpr".
     Then "Data.LinearProgram.GLPK" provides facilities for using the GLPK solver system on your problem, with a sizable number
     of options available.
 
