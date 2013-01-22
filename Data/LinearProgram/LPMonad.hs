@@ -1,88 +1,75 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts, RecordWildCards #-}
 
-module Data.LinearProgram.LPMonad where
+-- | A collection of operations that can be used to specify linear programming in a
+-- simple, monadic way.  It is not too difficult to construct 'LP' values explicitly,
+-- but this module may help simplify and modularize the construction of the linear program,
+-- for example separating different families of constraints in the problem specification.
+-- 
+-- Many of these functions should be executed in either the @'LPM' v c@ or the @'LPT' v c 'IO'@ monad.
+module Data.LinearProgram.LPMonad (
+	module Data.LinearProgram.LPMonad.Internal,
+	-- * Solvers
+	quickSolveMIP,
+	quickSolveLP,
+	glpSolve,
+	quickSolveMIP',
+	quickSolveLP',
+	glpSolve') where
 
 import Control.Monad.State.Strict
+import Control.Monad.Identity
 
 import Data.Map
 import Data.Monoid
--- import Data.Bounds
 
-import Data.LinFunc
-import Data.LinearProgram.Types
-import Data.LinearProgram.Spec
+import Data.LinearProgram.Common
+import Data.LinearProgram.LPMonad.Internal
 
--- | A 'State' monad used for the construction of a linear program.
-type LPM v c = State (LP v c)
+import Data.LinearProgram.GLPK.Solver
+import Data.LinearProgram.GLPK.IO
 
--- | Constructs a linear programming problem, returning any
--- desired return value.
-runLPM :: (Ord v, Module r c) => LPM v c a -> (a, LP v c)
-runLPM m = runState m (LP Max zero [] mempty mempty)
 
--- | Constructs a linear programming problem.
-execLPM :: (Ord v, Module r c) => LPM v c a -> LP v c
-execLPM = snd . runLPM
+{-# SPECIALIZE quickSolveLP :: (Ord v, Real c) => 
+	LPT v c IO (ReturnCode, Maybe (Double, Map v Double)) #-}
+{-# SPECIALIZE quickSolveMIP :: (Ord v, Real c) => 
+	LPT v c IO (ReturnCode, Maybe (Double, Map v Double)) #-}
+-- | Solves the linear program with the default settings in GLPK.  Returns the return code,
+-- and if the solver was successful, the objective function value and the settings of each variable.
+quickSolveLP, quickSolveMIP :: (Ord v, Real c, MonadState (LP v c) m, MonadIO m) => 
+	m (ReturnCode, Maybe (Double, Map v Double))
+quickSolveLP = glpSolve simplexDefaults
+quickSolveMIP = glpSolve mipDefaults
 
--- | Sets the optimization direction of the linear program:
--- maximization or minimization.
-setDirection :: Direction -> LPM v c ()
-setDirection dir = modify (\ lp -> lp{direction = dir})
+{-# SPECIALIZE glpSolve :: (Ord v, Real c) => GLPOpts -> LPT v c IO (ReturnCode, Maybe (Double, Map v Double)) #-}
+-- | Solves the linear program with the specified options in GLPK.  Returns the return code,
+-- and if the solver was successful, the objective function value and the settings of each variable.
+glpSolve :: (Ord v, Real c, MonadState (LP v c) m, MonadIO m) => GLPOpts -> m (ReturnCode, Maybe (Double, Map v Double))
+glpSolve opts = get >>= liftIO . glpSolveVars opts
 
-equal, leq, geq :: (Ord v, Module r c) => LinFunc v c -> LinFunc v c -> LPM v c ()
-equal f g = equalTo (f ^-^ g) zero
-leq f g = leqTo (f ^-^ g) zero
-geq = flip leq
+{-# SPECIALIZE quickSolveLP' :: (Ord v, Real c) => LPT v c IO (ReturnCode, Maybe (Double, Map v Double, [RowValue v c])) #-}
+{-# SPECIALIZE quickSolveMIP' :: (Ord v, Real c) => LPT v c IO (ReturnCode, Maybe (Double, Map v Double, [RowValue v c])) #-}
+-- | Solves the linear program with the default settings in GLPK.  Returns the return code,
+-- and if the solver was successful, the objective function value, the settings of each variable, and the
+-- value of each constraint/row.
+quickSolveLP', quickSolveMIP' :: (Ord v, Real c, MonadState (LP v c) m, MonadIO m) => 
+	m (ReturnCode, Maybe (Double, Map v Double, [RowValue v c]))
+quickSolveLP' = glpSolve' simplexDefaults
+quickSolveMIP' = glpSolve' mipDefaults
 
-equal', leq', geq' :: (Ord v, Module r c) => String -> LinFunc v c -> LinFunc v c -> LPM v c ()
-equal' lab f g = equalTo' lab (f ^-^ g) zero
-leq' lab f g = leqTo' lab (f ^-^ g) zero
-geq' = flip . leq'
+{-# SPECIALIZE glpSolve' :: (Ord v, Real c) => GLPOpts -> LPT v c IO (ReturnCode, Maybe (Double, Map v Double, [RowValue v c])) #-}
+-- | Solves the linear program with the specified options in GLPK.  Returns the return code,
+-- and if the solver was successful, the objective function value, the settings of each variable, and
+-- the value of each constraint/row.
+glpSolve' :: (Ord v, Real c, MonadState (LP v c) m, MonadIO m) => 
+	GLPOpts -> m (ReturnCode, Maybe (Double, Map v Double, [RowValue v c]))
+glpSolve' opts = get >>= liftIO . glpSolveAll opts
 
-equalTo, leqTo, geqTo :: LinFunc v c -> c -> LPM v c ()
-equalTo f v = constrain f (Equ v)
-leqTo f v = constrain f (UBound v)
-geqTo f v = constrain f (LBound v)
+{-# SPECIALIZE writeLPToFile :: (Ord v, Show v, Real c) => FilePath -> LPT v c IO () #-}
+writeLPToFile :: (Ord v, Show v, Real c, MonadState (LP v c) m, MonadIO m) =>
+	FilePath -> m ()
+writeLPToFile file = get >>= liftIO . writeLP file 
 
-equalTo', leqTo', geqTo' :: String -> LinFunc v c -> c -> LPM v c ()
-equalTo' lab f v = constrain' lab f (Equ v)
-leqTo' lab f v = constrain' lab f (UBound v)
-geqTo' lab f v = constrain' lab f (LBound v)
-
-varEq, varLeq, varGeq :: (Ord v, Ord c) => v -> c -> LPM v c ()
-varEq v c = setVarBounds v (Equ c)
-varLeq v c = setVarBounds v (UBound c)
-varGeq v c = setVarBounds v (LBound c)
-
-varBds :: (Ord v, Ord c) => v -> c -> c -> LPM v c ()
-varBds v l u = setVarBounds v (Bound l u)
-
-constrain :: LinFunc v c -> Bounds c -> LPM v c ()
-constrain f bds = modify addConstr where
-	addConstr lp@LP{..}
-		= lp{constraints = Constr Nothing f bds:constraints}
-
-constrain' :: String -> LinFunc v c -> Bounds c -> LPM v c ()
-constrain' lab f bds = modify addConstr where
-	addConstr lp@LP{..}
-		= lp{constraints = Constr (Just lab) f bds:constraints}
-
-setObjective :: LinFunc v c -> LPM v c ()
-setObjective obj = modify setObj where
-	setObj lp = lp{objective = obj}
-
-addObjective :: (Ord v, Module r c) => LinFunc v c -> LPM v c ()
-addObjective obj = modify addObj where
-	addObj lp@LP{..}
-		= lp {objective = obj ^+^ objective}
-		
-addWeightedObjective :: (Ord v, Module r c) => r -> LinFunc v c -> LPM v c ()
-addWeightedObjective wt obj = addObjective (wt *^ obj)
-
-setVarBounds :: (Ord v, Ord c) => v -> Bounds c -> LPM v c ()
-setVarBounds var bds = modify addBds where
-	addBds lp@LP{..} = lp{varBounds = insertWith mappend var bds varBounds}
-
-setVarKind :: Ord v => v -> VarKind -> LPM v c ()
-setVarKind v k = modify setK where
-	setK lp@LP{..} = lp{varTypes = insertWith mappend v k varTypes}
+{-# SPECIALIZE readLPFromFile :: FilePath -> LPT String Double IO () #-}
+readLPFromFile :: (MonadState (LP String Double) m, MonadIO m) =>
+	FilePath -> m ()
+readLPFromFile file = put =<< liftIO (readLP file)

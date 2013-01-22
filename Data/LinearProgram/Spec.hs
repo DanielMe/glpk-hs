@@ -3,7 +3,7 @@ module Data.LinearProgram.Spec where
 
 -- import Control.DeepSeq
 -- import Data.Bounds
-import Data.LinFunc
+import Data.LinearProgram.LinFunc
 import Data.LinearProgram.Types
 import Data.Map
 

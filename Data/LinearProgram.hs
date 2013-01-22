@@ -1,6 +1,8 @@
-module Data.LinearProgram (module Data.LinearProgram.Spec, module Data.LinearProgram.Types,
-	module Data.LinFunc) where
+module Data.LinearProgram (
+	module Data.LinearProgram.Common,
+	module Data.LinearProgram.LPMonad,
+	module Data.LinearProgram.GLPK) where
 
-import Data.LinearProgram.Spec
-import Data.LinearProgram.Types
-import Data.LinFunc
+import Data.LinearProgram.GLPK
+import Data.LinearProgram.LPMonad
+import Data.LinearProgram.Common

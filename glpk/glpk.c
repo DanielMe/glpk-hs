@@ -8,10 +8,6 @@ glp_prob *c_glp_create_prob(){
 	return lp;
 }
 
-void c_glp_write_lp (glp_prob *lp){
-  	glp_write_lp(lp, 0, "test.cplex");
-}
-
 void c_glp_set_obj_name(glp_prob *lp, const char *name){
   	glp_set_obj_name(lp, name);
 }
@@ -126,4 +122,72 @@ double c_glp_mip_row_val (glp_prob *mip, int i){
 
 double c_glp_mip_col_val (glp_prob *mip, int j){
   	return glp_mip_col_val(mip, j);
+}
+
+int c_glp_get_obj_dir (glp_prob *lp){
+  	return glp_get_obj_dir (lp);
+}
+
+int c_glp_get_num_rows (glp_prob *lp){
+  	return glp_get_num_rows (lp);
+}
+
+int c_glp_get_num_cols (glp_prob *lp){
+ 	return glp_get_num_cols (lp);
+}
+
+const char *c_glp_get_row_name (glp_prob *lp, int i){
+  	return glp_get_row_name (lp, i);
+}
+
+const char *c_glp_get_col_name (glp_prob *lp, int i){
+  	return glp_get_col_name (lp, i);
+}
+
+int c_glp_get_col_kind (glp_prob *lp, int i){
+  	return glp_get_col_kind (lp, i);
+}
+
+// double c_dbl_max(){
+//   	return DBL_MAX;
+// }
+
+double c_glp_get_row_lb (glp_prob *lp, int i){
+	return glp_get_row_lb (lp, i);
+}
+
+double c_glp_get_row_ub (glp_prob *lp, int i){
+	return glp_get_row_ub (lp, i);
+}
+
+double c_glp_get_col_lb (glp_prob *lp, int i){
+	return glp_get_col_lb (lp, i);
+}
+
+double c_glp_get_col_ub (glp_prob *lp, int i){
+	return glp_get_col_ub (lp, i);
+}
+
+int c_glp_get_row_type (glp_prob *lp, int i){
+  	return glp_get_row_type(lp, i);
+}
+
+int c_glp_get_col_type (glp_prob *lp, int i){
+  	return glp_get_col_type(lp, i);
+}
+
+double c_glp_get_obj_coef (glp_prob *lp, int j){
+  	return glp_get_obj_coef(lp, j);
+}
+
+int c_glp_get_mat_row (glp_prob *lp, int i, int ind[], double val[]){
+  	return c_glp_get_mat_row (lp, i, ind, val);
+}
+
+int c_glp_read_lp(glp_prob *lp, const char * fname){
+  	return glp_read_lp(lp, NULL, fname);
+}
+
+int c_glp_write_lp(glp_prob *lp, const char * fname){
+  	return glp_write_lp(lp, NULL, fname);
 }
