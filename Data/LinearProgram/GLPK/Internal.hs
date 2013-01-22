@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, ScopedTypeVariables, ForeignFunctionInterface #-}
 module Data.LinearProgram.GLPK.Internal (writeProblem, solveSimplex, mipSolve,
-	getObjVal, getRowPrim, getColPrim, mipObjVal, mipRowVal, mipColVal) where
+	getObjVal, getRowPrim, getColPrim, mipObjVal, mipRowVal, mipColVal, getBadRay) where
 {-(writeProblem, addCols,
 	addRows, createIndex, findCol, findRow, getColPrim, getRowPrim, getObjVal,
 	mipColVal, mipRowVal, mipObjVal, mipSolve, setColBounds, setColKind, setColName, setMatRow,
@@ -19,7 +19,9 @@ import Data.LinearProgram.Common
 import Data.LinearProgram.GLPK.Types
 
 -- foreign import ccall "c_glp_set_obj_name" glpSetObjName :: Ptr GlpProb -> CString -> IO ()
-foreign import ccall unsafe "c_glp_set_obj_dir" glpSetObjDir :: Ptr GlpProb -> CInt -> IO ()
+-- foreign import ccall unsafe "c_glp_set_obj_dir" glpSetObjDir :: Ptr GlpProb -> CInt -> IO ()
+foreign import ccall unsafe "c_glp_minimize" glpMinimize :: Ptr GlpProb -> IO ()
+foreign import ccall unsafe "c_glp_maximize" glpMaximize :: Ptr GlpProb -> IO ()
 foreign import ccall unsafe "c_glp_add_rows" glpAddRows :: Ptr GlpProb -> CInt -> IO CInt
 foreign import ccall unsafe "c_glp_add_cols" glpAddCols :: Ptr GlpProb -> CInt -> IO CInt
 foreign import ccall unsafe "c_glp_set_row_bnds" glpSetRowBnds :: Ptr GlpProb -> CInt -> CInt -> CDouble -> CDouble -> IO ()
@@ -39,10 +41,16 @@ foreign import ccall unsafe "c_glp_mip_solve" glpMipSolve ::
 foreign import ccall unsafe "c_glp_mip_obj_val" glpMIPObjVal :: Ptr GlpProb -> IO CDouble
 foreign import ccall unsafe "c_glp_mip_row_val" glpMIPRowVal :: Ptr GlpProb -> CInt -> IO CDouble
 foreign import ccall unsafe "c_glp_mip_col_val" glpMIPColVal :: Ptr GlpProb -> CInt -> IO CDouble
+foreign import ccall unsafe "c_glp_set_row_name" glpSetRowName :: Ptr GlpProb -> CInt -> CString -> IO ()
+foreign import ccall unsafe "c_glp_get_bad_ray" glpGetBadRay :: Ptr GlpProb -> IO CInt
 
 setObjectiveDirection :: Direction -> GLPK ()
-setObjectiveDirection dir = GLP $ flip glpSetObjDir 
-	(fromIntegral $ 1 + fromEnum dir)
+setObjectiveDirection dir = GLP $ case dir of
+	Min	-> glpMinimize
+	Max	-> glpMaximize
+
+getBadRay :: GLPK (Maybe Int)
+getBadRay = liftM (\ x -> guard (x /= 0) >> return (fromIntegral x)) $ GLP glpGetBadRay
 
 addRows :: Int -> GLPK Int
 addRows n = GLP $ liftM fromIntegral . flip glpAddRows (fromIntegral n)
@@ -64,9 +72,11 @@ onBounds f bds = case bds of
 	Bound a b	-> f 4 (realToFrac a) (realToFrac b)
 	Equ a		-> f 5 (realToFrac a) 0
 
+{-# SPECIALIZE setObjCoef :: Int -> Double -> GLPK (), Int -> Int -> GLPK () #-}
 setObjCoef :: Real a => Int -> a -> GLPK ()
 setObjCoef i v = GLP $ \ lp -> glpSetObjCoef lp (fromIntegral i) (realToFrac v)
 
+{-# SPECIALIZE setMatRow :: Int -> [(Int, Double)] -> GLPK (), Int -> [(Int, Int)] -> GLPK () #-}
 setMatRow :: Real a => Int -> [(Int, a)] -> GLPK ()
 setMatRow i row = GLP $ \ lp -> 
 	allocaArray (len+1) $ \ (ixs :: Ptr CInt) -> allocaArray (len+1) $ \ (coeffs :: Ptr CDouble) -> do
@@ -133,6 +143,11 @@ mipRowVal i = liftM realToFrac $ GLP (`glpMIPRowVal` fromIntegral i)
 mipColVal :: Int -> GLPK Double
 mipColVal i = liftM realToFrac $ GLP (`glpMIPColVal` fromIntegral i)
 
+setRowName :: Int -> String -> GLPK ()
+setRowName i nam = GLP $ withCString nam . flip glpSetRowName (fromIntegral i)
+
+{-# SPECIALIZE writeProblem :: Ord v => LP v Double -> GLPK (Map v Int),
+	Ord v => LP v Int -> GLPK (Map v Int) #-}
 writeProblem :: (Ord v, Real c) => LP v c -> GLPK (Map v Int)
 writeProblem LP{..} = do
 	setObjectiveDirection direction
@@ -140,17 +155,17 @@ writeProblem LP{..} = do
 	let allVars' = fmap (i0 +) allVars
 	sequence_ [setObjCoef i v | (i, v) <- elems $ intersectionWith (,) allVars' objective]
 	j0 <- addRows (length constraints)
-	sequence_ [do	setMatRow j
+	sequence_ [do	maybe (return ()) (setRowName j) lab
+			setMatRow j
 				[(i, v) | (i, v) <- elems (intersectionWith (,) allVars' f)]
 			setRowBounds j bnds
-				| (j, Constr _ f bnds) <- zip [j0..] constraints]
+				| (j, Constr lab f bnds) <- zip [j0..] constraints]
 -- 	createIndex
 	sequence_ [setColBounds i bnds |
 			(i, bnds) <- elems $ intersectionWith (,) allVars' varBounds]
 	sequence_ [setColBounds i Free | i <- elems $ difference allVars' varBounds]
 	sequence_ [setColKind i knd |
 			(i, knd) <- elems $ intersectionWith (,) allVars' varTypes]
--- 	writeLP
 	return allVars'
 	where	allVars0 = fmap (const ()) objective `union`
 			unions [fmap (const ()) f | Constr _ f _ <- constraints] `union`

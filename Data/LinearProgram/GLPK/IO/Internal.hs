@@ -123,7 +123,6 @@ readGLPLP file = execLPT $ do
 		c <- getObjCoef i
 		return (name, c) | (i, name) <- assocs names]
 	setObjective (fromList (filter ((/= 0) . snd) obj))
-		
 
 writeGLPLP :: (Show v, Ord v, Real c) => FilePath -> LP v c -> GLPK ()
 writeGLPLP file lp = do
