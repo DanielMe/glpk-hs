@@ -105,6 +105,7 @@ void c_glp_set_col_kind(glp_prob *lp, int j, int kind){
 int c_glp_mip_solve(glp_prob *lp, int msg_lev, int br_tech, int bt_tech, int pp_tech,
 		     	int fp_heur, int tm_lim, int cuts, double mip_gap, int presolve){
   	glp_iocp iocp;
+	glp_mem_limit(750);
 // 	printf ("%d %d %d time\n", msg_lev, br_tech, tm_lim);
 	glp_init_iocp(&iocp);
 	iocp.msg_lev = msg_lev;

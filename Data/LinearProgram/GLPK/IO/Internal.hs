@@ -9,7 +9,7 @@ import Data.Map hiding (map, filter)
 
 import Data.LinearProgram.Common
 import Data.LinearProgram.GLPK.Common
-import Data.LinearProgram.LPMonad.Internal
+import Control.Monad.LPMonad.Internal
 
 foreign import ccall unsafe "c_glp_write_lp" glpWriteLP :: Ptr GlpProb -> CString -> IO ()
 foreign import ccall unsafe "c_glp_read_lp" glpReadLP :: Ptr GlpProb -> CString -> IO ()
