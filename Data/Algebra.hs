@@ -12,7 +12,9 @@ module Data.Algebra (
 	-- * Algebraic structures
 	Group(..),
 	Ring(..),
+	Field(..),
 	Module(..),
+	VectorSpace(..),
 	Poly,
 	varPoly,
 	GroupRing,
@@ -29,4 +31,5 @@ module Data.Algebra (
 
 import Data.Algebra.Group
 import Data.Algebra.Ring
+import Data.Algebra.Field
 import Data.Algebra.Module

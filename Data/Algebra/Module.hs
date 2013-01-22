@@ -76,11 +76,11 @@ instance (Module r m1, Module r m2, Module r m3, Module r m4) => Module r (m1, m
 type LinFunc = M.Map
 
 -- | Given a variable @v@, returns the function equivalent to @v@.
-var :: (Ord v, Num c) => v -> LinFunc v c
-var v = M.singleton v 1
+var :: (Ord v, Ring c) => v -> LinFunc v c
+var v = M.singleton v one
 
 -- | @c '*&' v@ is equivalent to @c '*^' 'var' v@.
-(*&) :: (Ord v, Num c) => c -> v -> LinFunc v c
+(*&) :: (Ord v, Ring c) => c -> v -> LinFunc v c
 c *& v = M.singleton v c
 
 -- | Equivalent to @'vsum' . 'map' 'var'@.

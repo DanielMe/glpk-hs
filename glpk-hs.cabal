@@ -1,5 +1,5 @@
 Name:           glpk-hs
-Version:        0.2.4
+Version:        0.3.1
 Author:         Louis Wasserman
 License:        BSD3
 License-file:   LICENSE
@@ -23,9 +23,10 @@ build-type:     Simple
 
 extra-source-files: examples/example1.hs
 
-Build-Depends:    base >= 4 && < 5, array, containers, mtl
+Build-Depends:    base >= 4 && < 5, array, containers, mtl, deepseq
 Exposed-modules:  Data.LinearProgram,
                   Data.LinearProgram.Common,
+		  Data.LinearProgram.LinExpr,
                   Data.LinearProgram.GLPK,
                   Data.LinearProgram.GLPK.Solver,
                   Data.LinearProgram.GLPK.IO,
@@ -42,6 +43,7 @@ Other-modules:    Data.LinearProgram.GLPK.Internal,
                   Data.LinearProgram.Types,
                   Data.Algebra.Group,
                   Data.Algebra.Ring,
-                  Data.Algebra.Module
+                  Data.Algebra.Module,
+		  Data.Algebra.Field
 c-sources:        glpk/glpk.c
 extra-libraries:  glpk

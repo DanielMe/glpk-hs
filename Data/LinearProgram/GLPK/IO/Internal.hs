@@ -6,6 +6,8 @@ import Control.Monad
 import Control.Monad.Trans (liftIO, lift)
 
 import Data.Map hiding (map, filter)
+import Debug.Trace
+import Foreign.Storable
 
 import Data.LinearProgram.Common
 import Data.LinearProgram.GLPK.Common
@@ -78,7 +80,7 @@ loadBounds lb ub tp i = do
 	case typ of
 		1	-> return Free
 		2	-> liftM LBound (lb i)
-		3	-> liftM UBound (lb i)
+		3	-> liftM UBound (ub i)
 		4	-> liftM2 Bound (lb i) (ub i)
 		_	-> liftM Equ (lb i)
 		
@@ -88,12 +90,12 @@ getObjCoef = getCDouble glpGetObjCoef
 getRows :: GLPK [(Int, [(Int, Double)])]
 getRows = do	n <- getNumRows
 		m <- getNumCols
-		ixs <- liftIO $ mallocArray m
-		coefs <- liftIO $ mallocArray m
+		ixs <- liftIO $ mallocArray (m+1)
+		coefs <- liftIO $ mallocArray (m+1)
 		sequence [do
 			k <- liftM fromIntegral $ GLP $ \ lp -> glpGetMatRow lp (fromIntegral i) ixs coefs
-			ixsL <- liftIO $ peekArray k ixs
-			coefsL <- liftIO $ peekArray k coefs
+			ixsL <- liftIO $ mapM (peekElemOff ixs) [1..k]
+			coefsL <- liftIO $ mapM (peekElemOff ixs) [1..k]
 			return (i, zip (map fromIntegral ixsL) (map realToFrac coefsL))
 			| i <- [1..n]]
 
