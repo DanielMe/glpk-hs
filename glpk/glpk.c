@@ -105,7 +105,7 @@ void c_glp_set_col_kind(glp_prob *lp, int j, int kind){
 int c_glp_mip_solve(glp_prob *lp, int msg_lev, int br_tech, int bt_tech, int pp_tech,
 		     	int fp_heur, int tm_lim, int cuts, double mip_gap, int presolve){
   	glp_iocp iocp;
-	glp_mem_limit(750);
+	glp_mem_limit(10000);
 // 	printf ("%d %d %d time\n", msg_lev, br_tech, tm_lim);
 	glp_init_iocp(&iocp);
 	iocp.msg_lev = msg_lev;
@@ -194,7 +194,7 @@ double c_glp_get_obj_coef (glp_prob *lp, int j){
 }
 
 int c_glp_get_mat_row (glp_prob *lp, int i, int ind[], double val[]){
-  	return c_glp_get_mat_row (lp, i, ind, val);
+  	return glp_get_mat_row (lp, i, ind, val);
 }
 
 int c_glp_read_lp(glp_prob *lp, const char * fname){

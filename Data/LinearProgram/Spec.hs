@@ -1,12 +1,14 @@
 {-# LANGUAGE TupleSections, RecordWildCards, DeriveFunctor #-}
 module Data.LinearProgram.Spec (Constraint(..), VarTypes, ObjectiveFunc, VarBounds, LP(..),
-	mapVars, mapVals) where
+	mapVars, mapVals, allVars) where
 
 import Control.Applicative ((<$>))
+import Control.DeepSeq
 import Control.Monad
 
 import Data.Char (isSpace)
 import Data.Monoid
+import Data.Functor
 import Data.Map hiding (map)
 
 import Text.ParserCombinators.ReadP
@@ -30,6 +32,10 @@ type VarBounds v c = Map v (Bounds c)
 --   Note: the 'Read' and 'Show' implementations do not correspond to any particular linear program specification format.
 data LP v c = LP {direction :: Direction, objective :: ObjectiveFunc v c, constraints :: [Constraint v c],
 			varBounds :: VarBounds v c, varTypes :: VarTypes v} deriving (Read, Show, Functor)
+
+allVars :: Ord v => LP v c -> Map v ()
+allVars LP{..} = foldl union ((() <$ objective) `union` (() <$ varBounds) `union` (() <$ varTypes))
+	[() <$ f | Constr _ f _ <- constraints]
 
 showBds :: Show c => String -> Bounds c -> String
 showBds expr bds = case bds of
@@ -140,9 +146,20 @@ mapVars f LP{..} =
 mapVals :: (c -> c') -> LP v c -> LP v c'
 mapVals = fmap
 
--- instance (NFData v, NFData c) => NFData (Constraint v c) where
--- 	rnf (Constr lab f b) = lab `deepseq` f `deepseq` rnf b
+instance (NFData v, NFData c) => NFData (Constraint v c) where
+	rnf (Constr lab f b) = lab `deepseq` f `deepseq` rnf b
 
--- instance (NFData v, NFData c) => NFData (LP v c) where
--- 	rnf LP{..} = direction `deepseq` objective `deepseq` constraints `deepseq`
--- 		varBounds `deepseq` rnf varTypes
+instance (NFData v, NFData c) => NFData (LP v c) where
+	rnf LP{..} = direction `deepseq` objective `deepseq` constraints `deepseq`
+		varBounds `deepseq` rnf varTypes
+
+instance NFData VarKind
+instance NFData Direction
+instance NFData c => NFData (Bounds c) where
+	rnf Free = ()
+	rnf (Equ c) = rnf c
+	rnf (LBound c) = rnf c
+	rnf (UBound c) = rnf c
+	rnf (Bound l u) = l `deepseq` rnf u
+-- instance (NFData k, NFData a) => NFData (Map k a) where
+-- 	rnf m = foldrWithKey (\ k a -> deepseq k . deepseq a) () m

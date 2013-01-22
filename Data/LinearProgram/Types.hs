@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Data.LinearProgram.Types (VarKind(..), Direction(..), Bounds(..)) where
 
--- import Control.DeepSeq
+import Control.DeepSeq
 
 import Data.Monoid
 
@@ -18,7 +18,7 @@ data Direction = Min | Max deriving (Eq, Ord, Enum, Show, Read)
 -- instance NFData Direction
 
 data Bounds a =
-	Free | LBound a | UBound a | Equ a | Bound a a deriving (Eq, Show, Read, Functor)
+	Free | LBound !a | UBound !a | Equ !a | Bound !a !a deriving (Eq, Show, Read, Functor)
 
 -- instance NFData (Bounds a)
 

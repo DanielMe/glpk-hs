@@ -40,15 +40,18 @@ instance Integral a => Ring (Ratio a) where
 	one = 1
 	(*#) = (*)
 
+-- | The polynomial ring.
 instance Ring r => Ring (Poly r) where
 	one = [one]
 	(p:ps) *# (q:qs) = (p *# q):(ps *# (q:qs) ^+^ map (p *#) qs)
 	_ *# _ = []
 
+-- | The function ring.
 instance Ring r => Ring (a -> r) where
 	one = const one
 	(*#) = liftA2 (*#)
 
+-- | The group ring.
 instance (Ord g, Group g, Ring r) => Ring (GroupRing r g) where
 	one = M.singleton zero one
 	m *# n = M.fromListWith (^+^) [(u ^+^ v, f *# g) | (u, f) <- M.assocs m, (v, g) <- M.assocs n]
