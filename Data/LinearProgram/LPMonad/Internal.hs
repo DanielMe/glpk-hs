@@ -40,7 +40,8 @@ module Data.LinearProgram.LPMonad.Internal (
 	varBds,
 	setVarBounds,
 	setVarKind,
-	newVariables) where
+	newVariables,
+	newVariables') where
 
 import Control.Monad.State.Strict
 import Control.Monad.Identity
@@ -134,7 +135,8 @@ geqTo' lab f v = constrain' lab f (LBound v)
 -- | Returns a list of @k@ unused variables.  If the program is currently empty,
 -- starts at @'toEnum' 0@.  Otherwise, if @v@ is the biggest variable currently in use
 -- (by the 'Ord' ordering), then this returns @take k (tail [v..])@, which uses the 'Enum'
--- implementation.
+-- implementation.  Note that if the 'Enum' instance doesn't play well with 'Ord',
+-- bad things can happen.
 newVariables :: (MonadState (LP v c) m, Ord v, Enum v) => Int -> m [v]
 newVariables !k = do	LP{..} <- get
 			let allVars0 = fmap (const ()) objective `union`
@@ -144,6 +146,23 @@ newVariables !k = do	LP{..} <- get
 				Nothing	-> return $ take k [toEnum 0..]
 				Just ((start, _), _)
 					-> return $ take k $ tail [start..]
+					
+{-# SPECIALIZE newVariables' :: (Ord v, Enum v) => LPM v c [v],
+	(Ord v, Enum v, Monad m) => LPT v c m [v] #-}
+-- | Returns an infinite list of unused variables.  If the program is currently empty,
+-- starts at @'toEnum' 0@.  Otherwise, if @v@ is the biggest variable currently in use
+-- (by the 'Ord' ordering), then this returns @tail [v..]@, which uses the 'Enum'
+-- implementation.  Note that if the 'Enum' instance doesn't play well with 'Ord',
+-- bad things can happen.
+newVariables' :: (MonadState (LP v c) m, Ord v, Enum v) => m [v]
+newVariables' = do	LP{..} <- get
+			let allVars0 = fmap (const ()) objective `union`
+				unions [fmap (const ()) f | Constr _ f _ <- constraints] `union`
+				fmap (const ()) varBounds `union` fmap (const ()) varTypes
+			case minViewWithKey allVars0 of
+				Nothing	-> return [toEnum 0..]
+				Just ((start, _), _)
+					-> return $ tail [start..]
 
 {-# SPECIALIZE varEq :: (Ord v, Ord c) => v -> c -> LPM v c (),
 	(Ord v, Ord c, Monad m) => v -> c -> LPT v c m () #-}
