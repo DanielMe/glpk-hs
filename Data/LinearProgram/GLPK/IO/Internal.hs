@@ -5,8 +5,7 @@ module Data.LinearProgram.GLPK.IO.Internal (readGLP_LP, writeGLP_LP) where
 import Control.Monad
 import Control.Monad.Trans
 
-
-import Data.Map hiding (map)
+import Data.Map hiding (map, filter)
 
 import Data.LinearProgram.Common
 import Data.LinearProgram.GLPK.Common
@@ -73,7 +72,7 @@ loadBounds lb ub tp i = do
 		2	-> liftM LBound (lb i)
 		3	-> liftM UBound (lb i)
 		4	-> liftM2 Bound (lb i) (ub i)
-		5	-> liftM Equ (lb i)
+		_	-> liftM Equ (lb i)
 		
 getObjCoef :: Int -> GLPK Double
 getObjCoef = getCDouble glpGetObjCoef
@@ -112,6 +111,11 @@ readGLP_LP file = execLPT $ do
 		maybe constrain constrain' name 
 			(linCombination [(v, names ! j) | (j, v) <- row]) bds
 			| (i, row) <- rowContents]
+	obj <- lift $ sequence [do
+		c <- getObjCoef i
+		return (name, c) | (i, name) <- assocs names]
+	setObjective (fromList (filter ((/= 0) . snd) obj))
+		
 
 writeGLP_LP :: (Show v, Ord v, Real c) => FilePath -> LP v c -> GLPK ()
 writeGLP_LP file lp = do

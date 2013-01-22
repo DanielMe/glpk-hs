@@ -185,9 +185,9 @@ int c_glp_get_mat_row (glp_prob *lp, int i, int ind[], double val[]){
 }
 
 int c_glp_read_lp(glp_prob *lp, const char * fname){
-  	return glp_read_lp(lp, NULL, fname);
+  	return glp_read_lp(lp, 0, fname);
 }
 
 int c_glp_write_lp(glp_prob *lp, const char * fname){
-  	return glp_write_lp(lp, NULL, fname);
+  	return glp_write_lp(lp, 0, fname);
 }

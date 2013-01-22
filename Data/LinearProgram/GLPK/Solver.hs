@@ -19,17 +19,17 @@ module Data.LinearProgram.GLPK.Solver (
 	Cuts(..)) where 
 
 import Control.Monad
-import Control.Monad.Trans
+-- import Control.Monad.Trans
 
 -- import Debug.Trace
 
 import Data.Map
-import Data.Maybe (catMaybes)
+-- import Data.Maybe (catMaybes)
 import Data.LinearProgram.Common
 import Data.LinearProgram.GLPK.Internal
 import Data.LinearProgram.GLPK.Types
 
-import Data.Time.Clock
+-- import Data.Time.Clock
 -- import System.Time
 
 import GHC.Exts(build)

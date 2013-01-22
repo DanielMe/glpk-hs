@@ -5,7 +5,7 @@ module Data.LinearProgram.GLPK.IO where
 -- import Data.Map
 
 import Data.LinearProgram.Common
-import Data.LinearProgram.LPMonad.Internal
+-- import Data.LinearProgram.LPMonad.Internal
 
 import Data.LinearProgram.GLPK.Common
 import Data.LinearProgram.GLPK.IO.Internal
