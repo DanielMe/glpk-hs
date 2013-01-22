@@ -9,7 +9,7 @@ import qualified Data.IntMap as IM
 import Data.Ratio
 import Data.Array.Base
 import Data.Array.IArray
-import Data.Array.Unboxed
+-- import Data.Array.Unboxed
 
 -- import Data.LinFunc.TH
 import Data.LinFunc.Class
