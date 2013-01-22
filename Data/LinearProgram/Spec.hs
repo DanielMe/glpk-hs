@@ -9,7 +9,7 @@ import Control.Monad
 import Data.Char (isSpace)
 import Data.Monoid
 import Data.Functor
-import Data.Map hiding (map)
+import Data.Map hiding (map, foldl)
 
 import Text.ParserCombinators.ReadP
 
@@ -45,7 +45,7 @@ showBds expr bds = case bds of
 	UBound x -> expr ++ " <= " ++ show x
 	Bound l u -> show l ++ " <= " ++ expr ++ " <= " ++ show u
 
-showFunc :: (Show v, Num c, Ord c) => LinFunc v c -> String
+showFunc :: (Show v, Num c, Ord c, Show c) => LinFunc v c -> String
 showFunc func = case assocs func of
 	[]	-> "0"
 	((v,c):vcs) ->
@@ -61,7 +61,7 @@ replaceSpace c
 	| isSpace c	= '_'
 	| otherwise	= c
 
-instance (Show v, Num c, Ord c) => Show (Constraint v c) where
+instance (Show v, Num c, Ord c, Show c) => Show (Constraint v c) where
 	show (Constr lab func bds) = maybe "" (++ ": ") lab ++
 		showBds (showFunc func) bds
 

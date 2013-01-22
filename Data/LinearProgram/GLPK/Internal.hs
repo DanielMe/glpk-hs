@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, ScopedTypeVariables, ForeignFunctionInterface #-}
+{-# LANGUAGE RecordWildCards, ScopedTypeVariables, ForeignFunctionInterface, BangPatterns #-}
 module Data.LinearProgram.GLPK.Internal (writeProblem, solveSimplex, mipSolve,
 	getObjVal, getRowPrim, getColPrim, mipObjVal, mipRowVal, mipColVal, getBadRay) where
 {-(writeProblem, addCols,
